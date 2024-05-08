@@ -55,7 +55,7 @@ const at=(t,e)=>"method"===e.kind&&e.descriptor&&!("value"in e.descriptor)?{...e
         ${s?W`
               OUT ${s} ${this.unit}<br />
               IN ${n} ${this.unit}
-            `:W` ${n} ${this.unit} `}
+            `:W` ${i}<br />${n} ${this.unit} `}
       </div>
     `}_generationToConsumersRadius(){return 50+this._generationToConsumersFlowWidth()}renderGenerationToConsumersFlow(t,e,i,o,r,n=1){const s=this._generationInFlowWidth(),l=this._generationToConsumersFlowWidth();let a=150-(s+50*(Object.keys(this.generationInRoutes).length+(void 0!==this._phantomGenerationInRoute?1:0)-1))/2,h=150-s/2;const d=[],c=[],u=structuredClone(this.generationInRoutes);void 0!==this._phantomGenerationInRoute&&(u.phantom=this._phantomGenerationInRoute);let p=0;for(const t in u){if(Object.prototype.hasOwnProperty.call(u,t)){const e=u[t].rate,i=this._rateToWidth(e);d.push(vt(a+i,0,a,0,h+i,50,h,50,"generation")),d.push(F`
           <polygon points="${a+i},${0}
@@ -218,7 +218,6 @@ const at=(t,e)=>"method"===e.kind&&e.descriptor&&!("value"in e.descriptor)?{...e
       height: 60px;
     }
     .col2 {
-      align: top;
       justify-content: left;
       flex-grow: 1;
     }

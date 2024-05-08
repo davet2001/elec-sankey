@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Electricity Sankey Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="elec-sankey.bundle.js" type="module"></script>
+    <script type="module">
+      import { mdiSolarPower } from './node_modules/@mdi/js/mdi.js'
+      function init(){
+        let sankey = document.getElementById('example1')
+        sankey.gridInRoute = {rate: 59}
+        sankey.gridOutRoute = {rate: 24}
+        sankey.generationInRoutes = {
+          gen1: {text: "Solar", icon:mdiSolarPower, rate: 38}
+        }
+        sankey.consumerRoutes = {
+        consumer1: {text: "Heater", rate: 59},
+        consumer2: {text: 'Dishwasher', rate: 7},
+        consumer3: {text: "Lamp", rate: 2},
+        }
+      };
+      window.onload = init
+    </script>
+    <style type="text/css">
+      * {
+        font-family: Arial;
+      }
+    </style>
+  </head>
+  <body style="margin-left: 24px">
+    <h2>Example</h2>
+    <elec-sankey id="example1"
+      unit="kWh"
+    ></elec-sankey>
+  </body>
+</html>>

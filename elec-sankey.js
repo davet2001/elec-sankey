@@ -384,7 +384,7 @@ let ElecSankey = class ElecSankey extends LitElement {
               OUT ${valueBRounded} ${this.unit}<br />
               IN ${valueARounded} ${this.unit}
             `
-            : html ` ${valueARounded} ${this.unit} `}
+            : html ` ${_name}<br />${valueARounded} ${this.unit} `}
       </div>
     `;
     }
@@ -741,7 +741,6 @@ ElecSankey.styles = css `
       height: 60px;
     }
     .col2 {
-      align: top;
       justify-content: left;
       flex-grow: 1;
     }
