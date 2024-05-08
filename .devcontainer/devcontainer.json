@@ -1,5 +1,5 @@
 {
-  "name": "round-slider",
+  "name": "elec-sankey",
   "image": "mcr.microsoft.com/devcontainers/typescript-node",
   "customizations": {
     "vscode": {

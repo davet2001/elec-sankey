@@ -9,7 +9,7 @@ import {
 } from "lit";
 
 import { mdiTransmissionTower, mdiHelpRhombus } from "@mdi/js";
-import { customElement, property } from "lit/decorators";
+import { customElement, property } from "lit/decorators.js";
 
 const TERMINATOR_BLOCK_LENGTH = 50;
 const GENERATION_FAN_OUT_HORIZONTAL_GAP = 50;

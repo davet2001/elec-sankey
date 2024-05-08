@@ -1,7 +1,7 @@
 import { __decorate } from "tslib";
 import { LitElement, css, html, nothing, svg, } from "lit";
 import { mdiTransmissionTower, mdiHelpRhombus } from "@mdi/js";
-import { customElement, property } from "lit/decorators";
+import { customElement, property } from "lit/decorators.js";
 const TERMINATOR_BLOCK_LENGTH = 50;
 const GENERATION_FAN_OUT_HORIZONTAL_GAP = 50;
 const CONSUMERS_FAN_OUT_VERTICAL_GAP = 50;
