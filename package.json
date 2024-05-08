@@ -1,11 +1,14 @@
 {
-  "name": "elec-sankey",
+  "name": "@davethompson/elec-sankey",
   "version": "1.0.0",
   "description": "A webcomponent to create sankey diagrams in SVG format (typically of domestic electricity flow)",
   "main": "elec-sankey.cjs",
   "type": "module",
   "module": "elec-sankey.js",
   "typings": "elec-sankey.d.ts",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@mdi/js": "^7.4.47",
     "lit": "^2.8.0"
