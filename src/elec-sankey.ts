@@ -11,9 +11,33 @@ import {
 import { mdiTransmissionTower, mdiHelpRhombus } from "@mdi/js";
 import { customElement, property } from "lit/decorators.js";
 
+/**
+ * Notes on graphical layout:
+ *
+ * The diagram contains elements that are fixed aspect ratio on the left,
+ * and variable aspect ratio on the right. This is because the split of
+ * renewables into two directions doesn't tend to stretch well and still
+ * look good.
+ *
+ * The right side of the diagram shows the rates fanning out to consumers,
+ * and this is much more easy to stretch. Changing the aspec ratio does not
+ * adversely affect the diagram.
+ *
+ * The overall SVG is designed to fit within a bounding box, of 500px less
+ * two 16px margins. Some experimentation with the value of
+ * SVG_LHS_VISIBLE_WIDTH is needed to get the best fit.
+ *
+ * With the SVG_LHS_VISIBLE_WIDTH set, a scaling factor is automatically
+ * calculated, and all other graphical elements are scaled by this factor.
+ *
+ * All other items in the diagram are an arbitrary scale, which is
+ * multiplied by the scaling factor.
+ *
+ */
+
 const TERMINATOR_BLOCK_LENGTH = 50;
-const GENERATION_FAN_OUT_HORIZONTAL_GAP = 50;
-const CONSUMERS_FAN_OUT_VERTICAL_GAP = 50;
+const GENERATION_FAN_OUT_HORIZONTAL_GAP = 80;
+const CONSUMERS_FAN_OUT_VERTICAL_GAP = 90;
 const CONSUMER_LABEL_HEIGHT = 50;
 const TARGET_SCALED_TRUNK_WIDTH = 90;
 
@@ -29,6 +53,8 @@ const FONT_SIZE_PX = 16;
 const ICON_SIZE_PX = 24;
 
 const GEN_ORIGIN_X = 150;
+
+const SVG_LHS_VISIBLE_WIDTH = 110;
 
 export const PAD_ANTIALIAS = 0.5;
 
@@ -83,7 +109,7 @@ function line_intersect(x1, y1, x2, y2, x3, y3, x4, y4) {
   const denom = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1);
   if (denom === 0) {
     // eslint-disable-next-line no-console
-    console.log("Warning: Lines do not intersect.");
+    console.warn("Warning: Lines do not intersect.");
     return null;
   }
   const ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denom;
@@ -177,7 +203,7 @@ function renderFlowByCorners(
   );
   if (ret1 == null || ret2 == null || ret3 == null || ret4 == null) {
     // eslint-disable-next-line no-console
-    console.log("Warning: render flow failed.");
+    console.warn("Warning: render flow failed.");
     return svg``;
   }
   const [bezierStartLX, bezierStartLY, ,] = ret1;
@@ -253,6 +279,12 @@ export class ElecSankey extends LitElement {
   @property({ attribute: false })
   public consumerRoutes: { [id: string]: ElecRoute } = {};
 
+  @property({ attribute: false })
+  public maxConsumerBranches: number = 0;
+
+  @property({ attribute: false })
+  public hideConsumersBelow: number = 0;
+
   private _rateToWidthMultplier: number = 0.2;
 
   private _phantomGridInRoute?: ElecRoute;
@@ -269,7 +301,7 @@ export class ElecSankey extends LitElement {
     let totalGen = 0;
     for (const key in this.generationInRoutes) {
       if (Object.prototype.hasOwnProperty.call(this.generationInRoutes, key)) {
-        totalGen += this.generationInRoutes[key].rate;
+        totalGen += this.generationInRoutes[key].rate || 0;
       }
     }
     return totalGen;
@@ -418,12 +450,17 @@ export class ElecSankey extends LitElement {
   }
 
   private _generationInFlowWidth(): number {
-    return this._rateToWidth(
-      this._generationTrackedTotal() + this._generationPhantom()
-    );
+    const total = this._generationTrackedTotal() + this._generationPhantom();
+    if (total === 0) {
+      return 0;
+    }
+    return this._rateToWidth(total);
   }
 
   private _generationToConsumersFlowWidth(): number {
+    if (this._generationToConsumers() == 0 && !this.generationInRoutes.length) {
+      return 0;
+    }
     return this._rateToWidth(this._generationToConsumers());
   }
 
@@ -472,6 +509,12 @@ export class ElecSankey extends LitElement {
         count++;
       }
     }
+    if (this.maxConsumerBranches !== 0) {
+      if (count > this.maxConsumerBranches - 2) {
+        count = this.maxConsumerBranches - 2;
+      }
+    }
+
     const untracked = this._untrackedConsumerRoute.rate;
     totalHeight += this._rateToWidth(untracked);
     count++;
@@ -531,10 +574,13 @@ export class ElecSankey extends LitElement {
     x2: number,
     y2: number,
     svgScaleX: number = 1
-  ): [TemplateResult[], TemplateResult] {
+  ): [TemplateResult[] | symbol[], TemplateResult | symbol] {
     const totalGenWidth = this._generationInFlowWidth();
     const genToConsWidth = this._generationToConsumersFlowWidth();
 
+    if (totalGenWidth === 0 && !Object.keys(this.generationInRoutes)) {
+      return [[nothing], nothing];
+    }
     const count =
       Object.keys(this.generationInRoutes).length +
       (this._phantomGenerationInRoute !== undefined ? 1 : 0);
@@ -546,39 +592,45 @@ export class ElecSankey extends LitElement {
     const divArray: TemplateResult[] = [];
 
     const startTerminatorY = 0;
-
+    let phantomRate = 0;
     const routes = structuredClone(this.generationInRoutes);
     if (this._phantomGenerationInRoute !== undefined) {
       routes.phantom = this._phantomGenerationInRoute;
+      phantomRate = this._phantomGenerationInRoute.rate;
     }
     let i = 0;
     // eslint-disable-next-line guard-for-in
     for (const key in routes) {
       if (Object.prototype.hasOwnProperty.call(routes, key)) {
         // const friendlyName = routes.text;
-        const rate = routes[key].rate;
-        const width = this._rateToWidth(rate);
-        svgArray.push(
-          renderFlowByCorners(
-            xA + width,
-            startTerminatorY,
-            xA,
-            startTerminatorY,
-            xB + width,
-            startTerminatorY + TERMINATOR_BLOCK_LENGTH,
-            xB,
-            startTerminatorY + TERMINATOR_BLOCK_LENGTH,
-            "generation"
-          )
-        );
-        svgArray.push(
-          svg`
-          <polygon points="${xA + width},${startTerminatorY}
-          ${xA},${startTerminatorY},
-          ${xA + width / 2},${startTerminatorY + ARROW_HEAD_LENGTH}"
-          class="tint"/>
-        `
-        );
+        let width = 0;
+        const rate = routes[key].rate || 0; // Handle undefined (NaN) rates.
+        // Most of the time, if the rate is zero, we don't want to draw it.
+        // Exception is if we have a >0 phantom source.
+        if (rate || phantomRate > 0) {
+          width = this._rateToWidth(rate);
+          svgArray.push(
+            renderFlowByCorners(
+              xA + width,
+              startTerminatorY,
+              xA,
+              startTerminatorY,
+              xB + width,
+              startTerminatorY + TERMINATOR_BLOCK_LENGTH,
+              xB,
+              startTerminatorY + TERMINATOR_BLOCK_LENGTH,
+              "generation"
+            )
+          );
+          svgArray.push(
+            svg`
+            <polygon points="${xA + width},${startTerminatorY}
+            ${xA},${startTerminatorY},
+            ${xA + width / 2},${startTerminatorY + ARROW_HEAD_LENGTH}"
+            class="tint"/>
+          `
+          );
+        }
 
         const midX = xA + width / 2;
         const LABEL_WIDTH = 72;
@@ -857,6 +909,53 @@ export class ElecSankey extends LitElement {
     return [divRet, svgRet, bottomLeftY, bottomRightY];
   }
 
+  private _getGroupedConsumerRoutes(): { [id: string]: ElecRoute } {
+    let consumerRoutes: { [id: string]: ElecRoute } = {};
+    consumerRoutes = structuredClone(this.consumerRoutes);
+
+    let groupedConsumer: ElecRoute = {
+      id: "other",
+      text: "Other",
+      rate: 0,
+    };
+    let groupedConsumerExists = false;
+
+    if (this.hideConsumersBelow > 0) {
+      for (const key in consumerRoutes) {
+        if (consumerRoutes[key].rate < this.hideConsumersBelow) {
+          groupedConsumer.rate += consumerRoutes[key].rate;
+          groupedConsumerExists = true;
+          delete consumerRoutes[key];
+        }
+      }
+    }
+
+    if (this.maxConsumerBranches !== 0) {
+      const numConsumerRoutes = Object.keys(consumerRoutes).length;
+      if (numConsumerRoutes > this.maxConsumerBranches - 1) {
+        let otherCount = numConsumerRoutes + 2 - this.maxConsumerBranches;
+        consumerRoutes = this.consumerRoutes;
+        const sortedConsumerRoutes: ElecRoute[] = Object.values(
+          this.consumerRoutes
+        ).sort((a, b) => a.rate - b.rate);
+        sortedConsumerRoutes.forEach((route) => {
+          if (otherCount > 0) {
+            groupedConsumer.rate += route.rate;
+            groupedConsumerExists = true;
+            if (route.id) {
+              delete consumerRoutes[route.id];
+            }
+            otherCount--;
+          }
+        });
+      }
+    }
+    if (groupedConsumerExists) {
+      consumerRoutes[groupedConsumer.id!] = groupedConsumer;
+    }
+    return consumerRoutes;
+  }
+
   protected _renderConsumerFlows(
     y6: number,
     y7: number,
@@ -876,14 +975,17 @@ export class ElecSankey extends LitElement {
     }
     let svgRow: TemplateResult;
     let divRow: TemplateResult;
-    for (const key in this.consumerRoutes) {
-      if (Object.prototype.hasOwnProperty.call(this.consumerRoutes, key)) {
+
+    const consumerRoutes = this._getGroupedConsumerRoutes();
+
+    for (const key in consumerRoutes) {
+      if (Object.prototype.hasOwnProperty.call(consumerRoutes, key)) {
         [divRow, svgRow, yLeft, yRight] = this._renderConsumerFlow(
           xLeft,
           yLeft,
           xRight,
           yRight,
-          this.consumerRoutes[key],
+          consumerRoutes[key],
           color,
           svgScaleX,
           i++
@@ -995,7 +1097,7 @@ export class ElecSankey extends LitElement {
     );
 
     const svgCanvasWidth = x1;
-    const svgVisibleWidth = 350;
+    const svgVisibleWidth = SVG_LHS_VISIBLE_WIDTH;
     const svgScaleX = svgVisibleWidth / svgCanvasWidth;
 
     const [gridInDiv, gridInFlowSvg] = this.renderGridInFlow(x2, y2, svgScaleX);
@@ -1135,6 +1237,9 @@ export class ElecSankey extends LitElement {
       flex-shrink: 0;
       justify-content: left;
       padding-left: 6px;
+      white-space: pre;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     svg {
       rect {
