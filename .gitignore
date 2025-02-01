@@ -128,3 +128,8 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+elec-sankey.bundle.js
+elec-sankey.cjs
+elec-sankey.d.ts
+elec-sankey.iife.js
+elec-sankey.js
