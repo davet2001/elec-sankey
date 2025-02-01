@@ -6,20 +6,37 @@
     <script src="elec-sankey.bundle.js" type="module"></script>
     <script type="module">
       import { mdiSolarPower } from './node_modules/@mdi/js/mdi.js'
+      var sankey;
+      var startTime;
+      const HEATER_MAX = 31, HEATER_MIN = 0, HEATER_FREQ = 5/100;
+      const GRID_IN_MAX = 59, GRID_IN_MIN = 0, GRID_IN_FREQ = 7/100;
+      const GRID_OUT_MAX = 24, GRID_OUT_MIN = 0, GRID_OUT_FREQ = 13/100;
+      const GEN_MAX = 38, GEN_MIN = 0, GEN_FREQ = 17/100;
+
+
       function init(){
-        let sankey = document.getElementById('example1')
-        sankey.gridInRoute = {rate: 59}
-        sankey.gridOutRoute = {rate: 24}
-        sankey.generationInRoutes = {
-          gen1: {text: "Solar", icon:mdiSolarPower, rate: 38}
-        }
-        sankey.consumerRoutes = {
-        consumer1: {text: "Heater", rate: 59},
-        consumer2: {text: 'Dishwasher', rate: 7},
-        consumer3: {text: "Lamp", rate: 2},
-        }
+        startTime = (new Date()).getTime();
+        sankey = document.getElementById('example1')
       };
       window.onload = init
+      var intervalId = setInterval(function() {
+        const elapsedTime = (new Date()).getTime() - startTime;
+        let heaterRate = (HEATER_MAX+HEATER_MIN)/2 + (HEATER_MAX-HEATER_MIN)/2*Math.sin(2 * Math.PI * HEATER_FREQ * elapsedTime/1000);
+        let gridInRate = (GRID_IN_MAX+GRID_IN_MIN)/2 + (GRID_IN_MAX-GRID_IN_MIN)/2*Math.sin(2 * Math.PI * GRID_IN_FREQ * elapsedTime/1000);
+        let gridOutRate = (GRID_OUT_MAX+GRID_OUT_MIN)/2 + (GRID_OUT_MAX-GRID_OUT_MIN)/2*Math.sin(2 * Math.PI * GRID_OUT_FREQ * elapsedTime/1000);
+        let genRate = (GEN_MAX+GEN_MIN)/2 + (GEN_MAX-GEN_MIN)/2*Math.sin(2 * Math.PI * GEN_FREQ * elapsedTime/1000);
+
+        sankey.gridInRoute = {rate: gridInRate}
+        sankey.gridOutRoute = {rate: gridOutRate}
+        sankey.generationInRoutes = {
+          gen1: {text: "Solar", icon:mdiSolarPower, rate: genRate}
+        }
+        sankey.consumerRoutes = {
+          consumer1: {text: "Heater", rate: heaterRate},
+          consumer2: {text: 'Dishwasher', rate: 7},
+          consumer3: {text: "Lamp", rate: 2},
+        }
+      }, 50)
     </script>
     <style type="text/css">
       * {
@@ -33,4 +50,4 @@
       unit="kWh"
     ></elec-sankey>
   </body>
-</html>>
+</html>
