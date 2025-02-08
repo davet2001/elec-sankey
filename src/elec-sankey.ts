@@ -65,6 +65,13 @@ export interface ElecRoute {
   icon?: string;
 }
 
+function debugPoint(x: number, y: number, label: string): TemplateResult {
+  return svg`
+    <circle cx="${x}" cy="${y}" r="3" fill="#22DDDD" />
+    <text x="${x - 13}" y="${y - 6}" font-size="10px">${label}</text>
+`;
+}
+
 // Color mixing from here: https://stackoverflow.com/a/76752232
 function hex2dec(hex: string) {
   const matched = hex.replace("#", "").match(/.{2}/g);
@@ -497,7 +504,22 @@ export class ElecSankey extends LitElement {
     if (this.gridOutRoute.rate > 0) {
       return this._rateToWidth(this.gridOutRoute.rate);
     }
-    return 0;
+  }
+
+  private _batteryToGridFlowWidth(): number {
+    return 20;
+  }
+
+  private _batteryToConsumersFlowWidth(): number {
+    return 15;
+  }
+
+  private _generationToBatteryFlowWidth(): number {
+    return 25;
+  }
+
+  private _gridToBatteryFlowWidth(): number {
+    return 30;
   }
 
   private _consumersFanOutTotalHeight(): number {
@@ -568,7 +590,9 @@ export class ElecSankey extends LitElement {
   }
 
   protected renderGenerationToConsumersFlow(
-    x0: number,
+    y0: number,
+    x15: number,
+    x16: number,
     x1: number,
     y1: number,
     x2: number,
@@ -578,7 +602,7 @@ export class ElecSankey extends LitElement {
     const totalGenWidth = this._generationInFlowWidth();
     const genToConsWidth = this._generationToConsumersFlowWidth();
 
-    if (totalGenWidth === 0 && !Object.keys(this.generationInRoutes)) {
+    if (genToConsWidth === 0 && !Object.keys(this.generationInRoutes)) {
       return [[nothing], nothing];
     }
     const count =
@@ -658,13 +682,13 @@ export class ElecSankey extends LitElement {
     const generatedFlowPath2 =
       genToConsWidth > 0
         ? renderFlowByCorners(
-            x0 + totalGenWidth,
-            TERMINATOR_BLOCK_LENGTH - PAD_ANTIALIAS,
-            x0 + totalGenWidth - genToConsWidth,
-            TERMINATOR_BLOCK_LENGTH - PAD_ANTIALIAS,
+            x16,
+            y0 - PAD_ANTIALIAS,
+            x15,
+            y0 - PAD_ANTIALIAS,
             x1,
             y1,
-            x2,
+            x1,
             y2,
             "generation"
           )
@@ -714,6 +738,28 @@ export class ElecSankey extends LitElement {
       0,${y10 + width / 2}"
       />
   `;
+  }
+
+  protected renderGenerationToBatteriesFlow(
+    x14: number,
+    x15: number,
+    y0: number,
+    y17: number
+  ): TemplateResult | symbol {
+    if (this._generationToBatteryFlowWidth() === 0) {
+      console.error("Returning nothing!");
+      return nothing;
+    }
+
+    return svg`
+    <rect
+      class="generation"
+      x="${x14}"
+      y="${y0}"
+      height="${y17 - y0}"
+      width="${x15 - x14}"
+    />
+    `;
   }
 
   protected renderGridInFlow(
@@ -1058,6 +1104,7 @@ export class ElecSankey extends LitElement {
 
     const widthGenToConsumers = this._generationToConsumersFlowWidth();
     const widthGenToGrid = this._generationToGridFlowWidth();
+    const widthGenToBatteries = this._generationToBatteryFlowWidth();
     const radiusGenToConsumers = 50 + widthGenToConsumers;
     const radiusGenToGrid = 50 + widthGenToGrid;
     const y1 = Math.max(
@@ -1065,7 +1112,11 @@ export class ElecSankey extends LitElement {
       TERMINATOR_BLOCK_LENGTH + radiusGenToGrid - widthGenToGrid / 2
     );
     const x1: number =
-      x0 + widthGenToGrid + widthGenToConsumers / 2 + radiusGenToConsumers;
+      x0 +
+      widthGenToGrid +
+      widthGenToBatteries +
+      widthGenToConsumers / 2 +
+      radiusGenToConsumers;
 
     const x2: number = x1;
     const y2: number = y1 + widthGenToConsumers;
@@ -1096,17 +1147,39 @@ export class ElecSankey extends LitElement {
       blendColor
     );
 
+    const y11 = y2 + this._batteryToGridFlowWidth();
+    const y13 = y5 + this._gridToBatteryFlowWidth();
+
+    const y17 = y5 + 60; //@todo fix arbitrary constant
+
+    const x14 = x0 + this._generationToGridFlowWidth();
+    const x15 = x14 + this._generationToBatteryFlowWidth();
+    const x16 = x15 + this._generationToConsumersFlowWidth();
+    const x17 = x14 - this._gridToBatteryFlowWidth();
+    const x20 = x15 + this._batteryToGridFlowWidth();
+    const x21 = x20 + this._batteryToConsumersFlowWidth();
+
+    const y4 = y5 + this._batteryToConsumersFlowWidth();
+
     const svgCanvasWidth = x1;
     const svgVisibleWidth = SVG_LHS_VISIBLE_WIDTH;
     const svgScaleX = svgVisibleWidth / svgCanvasWidth;
 
     const [gridInDiv, gridInFlowSvg] = this.renderGridInFlow(x2, y2, svgScaleX);
 
+    const genToBattFlowSvg = this.renderGenerationToBatteriesFlow(
+      x14,
+      x15,
+      y0,
+      y17
+    );
     const [genInFlowDiv, genInFlowSvg] = this.renderGenerationToConsumersFlow(
-      x0,
+      y0,
+      x15,
+      x16,
       x1,
       y1,
-      x2,
+      x2, //@todo this is redundant and can be replaced with x1
       y2,
       svgScaleX
     );
@@ -1134,7 +1207,21 @@ export class ElecSankey extends LitElement {
               height=${ymax * svgScaleX}
               preserveAspectRatio="none"
             >
-              ${genInFlowSvg} ${generationToGridFlowSvg} ${gridInFlowSvg}
+              ${genInFlowSvg} ${generationToGridFlowSvg} ${genToBattFlowSvg}
+              ${gridInFlowSvg} ${consOutFlowsDiv} ${debugPoint(x0, y0, "x0,y0")}
+              ${debugPoint(x1 - 20, y1, "x1,y1")}
+              ${debugPoint(x2 - 20, y2, "x2,y2")}
+              ${debugPoint(x10, y10, "x10,y10")}
+              ${debugPoint(x1 - 20, y5, "x1,y5")}
+              ${debugPoint(x14, y0, "x14,y0")} ${debugPoint(x15, y0, "x15,y0")}
+              ${debugPoint(x16, y0, "x16,y0")} ${debugPoint(x10, y2, "x10,y2")}
+              ${debugPoint(x10, y11, "x10,y11")}
+              ${debugPoint(x10, y5, "x10,y5")}
+              ${debugPoint(x17, y17, "x17,y17")}
+              ${debugPoint(x14, y17, "x14,y17")}
+              ${debugPoint(x15, y17, "x15,y17")}
+              ${debugPoint(x20, y17, "x20,y17")}
+              ${debugPoint(x21, y17, "x21,y17")}
             </svg>
           </div>
           <div class="sankey-mid">
@@ -1161,7 +1248,6 @@ export class ElecSankey extends LitElement {
       </div>
       <div class="col3 container">
         <div class="col3top padding"></div>
-        ${consOutFlowsDiv}
       </div>
     </div>`;
   }
@@ -1274,6 +1360,9 @@ export class ElecSankey extends LitElement {
       }
       rect.grid {
         fill: var(--grid-in-color, #920e83);
+      }
+      rect.battery {
+        fill: var(--grid-in-color, #01f4fc);
       }
     }
   `;
