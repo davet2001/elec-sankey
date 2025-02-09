@@ -747,7 +747,6 @@ export class ElecSankey extends LitElement {
     y17: number
   ): TemplateResult | symbol {
     if (this._generationToBatteryFlowWidth() === 0) {
-      console.error("Returning nothing!");
       return nothing;
     }
 
@@ -812,6 +811,58 @@ export class ElecSankey extends LitElement {
     class="tint"/>
   `;
     return [divRet, svgRet];
+  }
+
+  protected renderGridToBatteriesFlow(
+    x10: number,
+    y5: number,
+    y13: number,
+    x17: number,
+    y17: number,
+    x14: number
+  ): TemplateResult | symbol {
+    if (this._batteryToGridFlowWidth() === 0) {
+      return nothing;
+    }
+    return renderFlowByCorners(x10, y5, x10, y13, x14, y17, x17, y17, "grid");
+  }
+
+  protected renderBatteriesToConsumersFlow(
+    x1: number,
+    y5: number,
+    y4: number,
+    x20: number,
+    x21: number,
+    y17: number
+  ): TemplateResult | symbol {
+    if (this._batteryToConsumersFlowWidth() === 0) {
+      return nothing;
+    }
+    return renderFlowByCorners(x20, y17, x21, y17, x1, y5, x1, y4, "battery");
+  }
+
+  protected renderBatteriesToGridFlow(
+    x15: number,
+    y17: number,
+    x20: number,
+    x10: number,
+    y2: number,
+    y11: number
+  ): TemplateResult | symbol {
+    if (this._gridToBatteryFlowWidth() === 0) {
+      return nothing;
+    }
+    return renderFlowByCorners(
+      x15,
+      y17,
+      x20,
+      y17,
+      x10,
+      y2,
+      x10,
+      y11,
+      "battery"
+    );
   }
 
   protected renderGenInBlendFlow(y1: number, endColor: string): TemplateResult {
@@ -1105,11 +1156,14 @@ export class ElecSankey extends LitElement {
     const widthGenToConsumers = this._generationToConsumersFlowWidth();
     const widthGenToGrid = this._generationToGridFlowWidth();
     const widthGenToBatteries = this._generationToBatteryFlowWidth();
+    const widthBatteriesToGrid = this._batteryToGridFlowWidth();
     const radiusGenToConsumers = 50 + widthGenToConsumers;
     const radiusGenToGrid = 50 + widthGenToGrid;
     const y1 = Math.max(
       TERMINATOR_BLOCK_LENGTH + radiusGenToConsumers - widthGenToConsumers / 2,
-      TERMINATOR_BLOCK_LENGTH + radiusGenToGrid - widthGenToGrid / 2
+      TERMINATOR_BLOCK_LENGTH +
+        radiusGenToGrid -
+        (widthGenToGrid + widthBatteriesToGrid) / 2
     );
     const x1: number =
       x0 +
@@ -1123,7 +1177,7 @@ export class ElecSankey extends LitElement {
 
     const temp = x0 + this._generationToGridFlowWidth() - (y2 - y0);
     const x10 = temp > ARROW_HEAD_LENGTH ? temp : ARROW_HEAD_LENGTH;
-    const y10 = y2 - this._generationToGridFlowWidth();
+    const y10 = y2 - this._generationToGridFlowWidth() - widthBatteriesToGrid;
     return [x0, y0, x1, y1, x2, y2, x10, y10];
   }
 
@@ -1147,10 +1201,10 @@ export class ElecSankey extends LitElement {
       blendColor
     );
 
-    const y11 = y2 + this._batteryToGridFlowWidth();
+    const y11 = y2 - this._batteryToGridFlowWidth();
     const y13 = y5 + this._gridToBatteryFlowWidth();
 
-    const y17 = y5 + 60; //@todo fix arbitrary constant
+    const y17 = y13 + (y10 - y0);
 
     const x14 = x0 + this._generationToGridFlowWidth();
     const x15 = x14 + this._generationToBatteryFlowWidth();
@@ -1189,6 +1243,30 @@ export class ElecSankey extends LitElement {
       blendColor,
       svgScaleX
     );
+    const gridToBattFlowSvg = this.renderGridToBatteriesFlow(
+      x10,
+      y5,
+      y13,
+      x17,
+      y17,
+      x14
+    );
+    const battToConsFlowSvg = this.renderBatteriesToConsumersFlow(
+      x1,
+      y5,
+      y4,
+      x20,
+      x21,
+      y17
+    );
+    const battToGridFlowSvg = this.renderBatteriesToGridFlow(
+      x15,
+      y17,
+      x20,
+      x10,
+      y2,
+      y11
+    );
 
     const ymax = Math.max(y5, y8);
     return html`<div class="card-content">
@@ -1208,15 +1286,18 @@ export class ElecSankey extends LitElement {
               preserveAspectRatio="none"
             >
               ${genInFlowSvg} ${generationToGridFlowSvg} ${genToBattFlowSvg}
-              ${gridInFlowSvg} ${consOutFlowsDiv} ${debugPoint(x0, y0, "x0,y0")}
-              ${debugPoint(x1 - 20, y1, "x1,y1")}
+              ${gridToBattFlowSvg} ${gridInFlowSvg} ${consOutFlowsDiv}
+              ${battToConsFlowSvg} ${battToGridFlowSvg}
+              ${debugPoint(x0, y0, "x0,y0")} ${debugPoint(x1 - 20, y1, "x1,y1")}
               ${debugPoint(x2 - 20, y2, "x2,y2")}
               ${debugPoint(x10, y10, "x10,y10")}
               ${debugPoint(x1 - 20, y5, "x1,y5")}
+              ${debugPoint(x1 - 20, y4, "x1,y4")}
               ${debugPoint(x14, y0, "x14,y0")} ${debugPoint(x15, y0, "x15,y0")}
               ${debugPoint(x16, y0, "x16,y0")} ${debugPoint(x10, y2, "x10,y2")}
               ${debugPoint(x10, y11, "x10,y11")}
               ${debugPoint(x10, y5, "x10,y5")}
+              ${debugPoint(x10, y13, "x10,y13")}
               ${debugPoint(x17, y17, "x17,y17")}
               ${debugPoint(x14, y17, "x14,y17")}
               ${debugPoint(x15, y17, "x15,y17")}
@@ -1336,18 +1417,24 @@ export class ElecSankey extends LitElement {
         stroke: none;
         stroke-width: 0;
       }
+      path.grid {
+        fill: var(--grid-in-color, #920e83);
+      }
+      path.battery {
+        fill: var(--grid-in-color, #01f4fc);
+      }
       polygon {
         stroke: none;
       }
       polygon.generation {
         fill: var(--generation-color, #0d6a04);
       }
+      polygon.grid {
+        fill: var(--grid-in-color, #920e83);
+      }
       polygon.tint {
         fill: #000000;
         opacity: 0.2;
-      }
-      path.flow {
-        fill: gray;
       }
       path.generation {
         fill: var(--generation-color, #0d6a04);
