@@ -40,6 +40,7 @@ const GENERATION_FAN_OUT_HORIZONTAL_GAP = 80;
 const CONSUMERS_FAN_OUT_VERTICAL_GAP = 90;
 const CONSUMER_LABEL_HEIGHT = 50;
 const TARGET_SCALED_TRUNK_WIDTH = 90;
+const PAD_MULTIPLIER = 1.0;
 
 const GEN_COLOR = "#0d6a04";
 const GRID_IN_COLOR = "#920e83";
@@ -1150,33 +1151,50 @@ export class ElecSankey extends LitElement {
     number,
     number
   ] {
-    const x0 = GEN_ORIGIN_X - this._generationInFlowWidth() / 2;
-    const y0 = TERMINATOR_BLOCK_LENGTH;
-
     const widthGenToConsumers = this._generationToConsumersFlowWidth();
     const widthGenToGrid = this._generationToGridFlowWidth();
     const widthGenToBatteries = this._generationToBatteryFlowWidth();
     const widthBatteriesToGrid = this._batteryToGridFlowWidth();
-    const radiusGenToConsumers = 50 + widthGenToConsumers;
-    const radiusGenToGrid = 50 + widthGenToGrid;
-    const y1 = Math.max(
-      TERMINATOR_BLOCK_LENGTH + radiusGenToConsumers - widthGenToConsumers / 2,
-      TERMINATOR_BLOCK_LENGTH +
-        radiusGenToGrid -
-        (widthGenToGrid + widthBatteriesToGrid) / 2
-    );
-    const x1: number =
-      x0 +
-      widthGenToGrid +
+    const widthGridToBatteries = this._gridToBatteryFlowWidth();
+    const widthBatteriesTConsumers = this._batteryToConsumersFlowWidth();
+
+    const mostLeft = Math.min(-widthGenToGrid, -widthGridToBatteries);
+    const mostRight =
       widthGenToBatteries +
-      widthGenToConsumers / 2 +
-      radiusGenToConsumers;
+      Math.max(
+        widthGenToConsumers,
+        widthBatteriesToGrid + widthBatteriesTConsumers
+      );
+    const width = mostRight - mostLeft;
+    const padX =
+      Math.max(
+        widthGenToGrid,
+        widthGenToConsumers,
+        widthGridToBatteries,
+        widthBatteriesTConsumers
+      ) * PAD_MULTIPLIER;
+    const midX = ARROW_HEAD_LENGTH + width / 2 + padX;
+
+    const x0 =
+      ARROW_HEAD_LENGTH + widthGenToGrid > widthGridToBatteries
+        ? midX - width / 2
+        : midX - width / 2 + widthGridToBatteries - widthGenToGrid;
+    const y0 = TERMINATOR_BLOCK_LENGTH;
+
+    const y1 =
+      TERMINATOR_BLOCK_LENGTH +
+      Math.max(
+        padX,
+        widthGenToConsumers,
+        padX + widthGenToGrid + widthBatteriesToGrid - widthGenToConsumers,
+        widthGenToGrid * 2 + widthBatteriesToGrid - widthGenToConsumers
+      );
+    const x1: number = midX + width / 2 + padX;
 
     const x2: number = x1;
     const y2: number = y1 + widthGenToConsumers;
 
-    const temp = x0 + this._generationToGridFlowWidth() - (y2 - y0);
-    const x10 = temp > ARROW_HEAD_LENGTH ? temp : ARROW_HEAD_LENGTH;
+    const x10 = ARROW_HEAD_LENGTH;
     const y10 = y2 - this._generationToGridFlowWidth() - widthBatteriesToGrid;
     return [x0, y0, x1, y1, x2, y2, x10, y10];
   }
