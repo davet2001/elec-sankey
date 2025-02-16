@@ -46,8 +46,11 @@ const GEN_COLOR = "#0d6a04";
 const GRID_IN_COLOR = "#920e83";
 const BATT_OUT_COLOR = "#01f4fc";
 
-const BLEND_LENGTH = 80;
-const BLEND_LENGTH_PRE_FAN_OUT = 20;
+// The below two lengths must add up to 100.
+const CONSUMER_BLEND_LENGTH = 80;
+const CONSUMER_BLEND_LENGTH_PRE_FAN_OUT = 20;
+
+const BATTERY_BLEND_LENGTH = 30;
 
 const ARROW_HEAD_LENGTH = 10;
 const TEXT_PADDING = 8;
@@ -1019,7 +1022,7 @@ export class ElecSankey extends LitElement {
       x=0
       y="${y1}"
       height="${width}"
-      width="${BLEND_LENGTH + 2 * PAD_ANTIALIAS}"
+      width="${CONSUMER_BLEND_LENGTH + 2 * PAD_ANTIALIAS}"
       fill="url(#grad_grid)"
     />
   `
@@ -1047,7 +1050,7 @@ export class ElecSankey extends LitElement {
       x=0
       y="${y2}"
       height="${width}"
-      width="${BLEND_LENGTH + 1}"
+      width="${CONSUMER_BLEND_LENGTH + 1}"
       fill="url(#grad_gen)"
       style="fill-opacity:1"
     />
@@ -1063,10 +1066,10 @@ export class ElecSankey extends LitElement {
     const svgRet = svg`
     <rect
       id="blended-flow-pre-fan-out-rect"
-      x=${BLEND_LENGTH}
+      x=${CONSUMER_BLEND_LENGTH}
       y="${y4}"
       height="${y5 - y4}"
-      width="${BLEND_LENGTH_PRE_FAN_OUT + 1}"
+      width="${CONSUMER_BLEND_LENGTH_PRE_FAN_OUT + 1}"
       style="fill:${color};fill-opacity:1"
     />
   `;
@@ -1505,7 +1508,7 @@ export class ElecSankey extends LitElement {
     const x21 = x20 + this._batteryToConsumersFlowWidth();
 
     const y4 = y5 + this._batteryToConsumersFlowWidth();
-    const y18 = y17 + BLEND_LENGTH;
+    const y18 = y17 + BATTERY_BLEND_LENGTH;
 
     const svgCanvasWidth = x1;
     const svgVisibleWidth = SVG_LHS_VISIBLE_WIDTH;
