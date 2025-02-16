@@ -1254,7 +1254,10 @@ export class ElecSankey extends LitElement {
     y17: number,
     y18: number
   ): TemplateResult | symbol {
+    // Bottom layer
     const svgRetArray: Array<TemplateResult | symbol> = [];
+    // Top layer
+    const svgRetArray2: Array<TemplateResult | symbol> = [];
 
     // @todo if batteries aren't present, skip.
     // if (false * 1) {
@@ -1301,6 +1304,9 @@ export class ElecSankey extends LitElement {
 
     let xA: number = x21;
     let yA: number = y18;
+
+    let xB: number = x15;
+
     for (const key in batteryRoutes) {
       if (!Object.prototype.hasOwnProperty.call(batteryRoutes, key)) {
         console.error("error fetching battery route: " + key);
@@ -1313,9 +1319,9 @@ export class ElecSankey extends LitElement {
       svgRetArray.push(
         renderFlowByCorners(
           xA,
-          y18,
+          yA,
           xA - widthOut,
-          y18,
+          yA,
           x1,
           yA + curvePadTemp,
           x1,
@@ -1323,13 +1329,40 @@ export class ElecSankey extends LitElement {
           "battery"
         )
       );
-      xA += widthOut;
-      yA += widthOut + widthOut;
+      xA -= widthOut;
+      if (xA - x15 > 1) {
+        svgRetArray.push(
+          renderRect(
+            x15,
+            yA,
+            xA - x15,
+            CONSUMERS_FAN_OUT_VERTICAL_GAP,
+            "battery"
+          )
+        );
+      }
+
+      svgRetArray2.push(
+        renderFlowByCorners(
+          xB,
+          yA,
+          xB - widthIn,
+          yA,
+          x1,
+          yA + curvePadTemp + widthOut,
+          x1,
+          yA + curvePadTemp + widthOut + widthIn,
+          "battery",
+          battInBlendColor
+        )
+      );
+      yA += CONSUMERS_FAN_OUT_VERTICAL_GAP;
     }
 
     return svg`
       ${svgRetArray}
-    `;
+      ${svgRetArray2}
+      `;
   }
 
   protected _gridBlendRatio(): number {
