@@ -243,7 +243,8 @@ function renderRect(
   y: number,
   width: number,
   height: number,
-  classname: string
+  classname: string,
+  color: string | null = null
 ): TemplateResult {
   return svg`
   <rect
@@ -252,6 +253,7 @@ function renderRect(
   y="${y}"
   height="${height}"
   width="${width}"
+  {color ? style="fill:${color};fill-opacity:1" : ""}
   />`;
 }
 
@@ -402,6 +404,9 @@ export class ElecSankey extends LitElement {
 
   private _batteriesToConsumersRate: number = 0;
 
+  private _gridToBatteriesRate = 0;
+  private _genToBatteriesRate = 0;
+
   private _generationTrackedTotal(): number {
     let totalGen = 0;
     for (const key in this.generationInRoutes) {
@@ -475,11 +480,14 @@ export class ElecSankey extends LitElement {
     const generationTrackedTotal = this._generationTrackedTotal();
     const consumerTrackedTotal = this._consumerTrackedTotal();
     const batteryOutTotal = this._batteryOutTotal();
-    const batteryInTotal = this._batteryOutTotal();
+    const batteryInTotal = this._batteryInTotal();
 
     // @todo need a proper calculation here
     this._batteriesToGridRate = batteryOutTotal / 2;
     this._batteriesToConsumersRate = batteryOutTotal / 2;
+
+    this._gridToBatteriesRate = batteryInTotal / 2;
+    this._genToBatteriesRate = batteryInTotal / 2;
 
     // Balance the books.
     let phantomGridIn = 0;
@@ -639,11 +647,11 @@ export class ElecSankey extends LitElement {
   }
 
   private _generationToBatteryFlowWidth(): number {
-    return 25;
+    return this._rateToWidth(this._genToBatteriesRate);
   }
 
   private _gridToBatteriesFlowWidth(): number {
-    return 30;
+    return this._rateToWidth(this._gridToBatteriesRate);
   }
 
   private _consumersFanOutTotalHeight(): number {
@@ -1356,6 +1364,20 @@ export class ElecSankey extends LitElement {
           battInBlendColor
         )
       );
+      xB -= widthIn;
+      if (xB - x17 > 1) {
+        svgRetArray.push(
+          renderRect(
+            x17,
+            yA,
+            xB - x17,
+            CONSUMERS_FAN_OUT_VERTICAL_GAP,
+            "battery-in",
+            battInBlendColor
+          )
+        );
+      }
+
       yA += CONSUMERS_FAN_OUT_VERTICAL_GAP;
     }
 
