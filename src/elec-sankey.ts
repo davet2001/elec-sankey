@@ -398,6 +398,10 @@ export class ElecSankey extends LitElement {
     rate: 0,
   };
 
+  private _batteriesToGridRate: number = 0;
+
+  private _batteriesToConsumersRate: number = 0;
+
   private _generationTrackedTotal(): number {
     let totalGen = 0;
     for (const key in this.generationInRoutes) {
@@ -445,11 +449,37 @@ export class ElecSankey extends LitElement {
     return total;
   }
 
+  private _batteryOutTotal(): number {
+    let total = 0;
+    for (const id in this.batteryRoutes) {
+      if (Object.prototype.hasOwnProperty.call(this.batteryRoutes, id)) {
+        total += this.batteryRoutes[id].out.rate;
+      }
+    }
+    return total;
+  }
+
+  private _batteryInTotal(): number {
+    let total = 0;
+    for (const id in this.batteryRoutes) {
+      if (Object.prototype.hasOwnProperty.call(this.batteryRoutes, id)) {
+        total += this.batteryRoutes[id].in.rate;
+      }
+    }
+    return total;
+  }
+
   private _recalculate() {
     const gridImport = this._gridImport();
     const gridExport = this._gridExport();
     const generationTrackedTotal = this._generationTrackedTotal();
     const consumerTrackedTotal = this._consumerTrackedTotal();
+    const batteryOutTotal = this._batteryOutTotal();
+    const batteryInTotal = this._batteryOutTotal();
+
+    // @todo need a proper calculation here
+    this._batteriesToGridRate = batteryOutTotal / 2;
+    this._batteriesToConsumersRate = batteryOutTotal / 2;
 
     // Balance the books.
     let phantomGridIn = 0;
@@ -600,19 +630,19 @@ export class ElecSankey extends LitElement {
     }
   }
 
-  private _batteryToGridFlowWidth(): number {
-    return 20;
+  private _batteriesToGridFlowWidth(): number {
+    return this._rateToWidth(this._batteriesToGridRate);
   }
 
   private _batteryToConsumersFlowWidth(): number {
-    return 15;
+    return this._rateToWidth(this._batteriesToConsumersRate);
   }
 
   private _generationToBatteryFlowWidth(): number {
     return 25;
   }
 
-  private _gridToBatteryFlowWidth(): number {
+  private _gridToBatteriesFlowWidth(): number {
     return 30;
   }
 
@@ -922,7 +952,7 @@ export class ElecSankey extends LitElement {
     y17: number,
     x14: number
   ): TemplateResult | symbol {
-    if (this._batteryToGridFlowWidth() === 0) {
+    if (this._batteriesToGridFlowWidth() === 0) {
       return nothing;
     }
     return renderFlowByCorners(x10, y5, x10, y13, x14, y17, x17, y17, "grid");
@@ -950,7 +980,7 @@ export class ElecSankey extends LitElement {
     y2: number,
     y11: number
   ): TemplateResult | symbol {
-    if (this._gridToBatteryFlowWidth() === 0) {
+    if (this._gridToBatteriesFlowWidth() === 0) {
       return nothing;
     }
     return renderFlowByCorners(
@@ -1342,8 +1372,8 @@ export class ElecSankey extends LitElement {
     const widthGenToConsumers = this._generationToConsumersFlowWidth();
     const widthGenToGrid = this._generationToGridFlowWidth();
     const widthGenToBatteries = this._generationToBatteryFlowWidth();
-    const widthBatteriesToGrid = this._batteryToGridFlowWidth();
-    const widthGridToBatteries = this._gridToBatteryFlowWidth();
+    const widthBatteriesToGrid = this._batteriesToGridFlowWidth();
+    const widthGridToBatteries = this._gridToBatteriesFlowWidth();
     const widthBatteriesTConsumers = this._batteryToConsumersFlowWidth();
 
     const mostLeft = Math.min(-widthGenToGrid, -widthGridToBatteries);
@@ -1407,16 +1437,16 @@ export class ElecSankey extends LitElement {
       blendColor
     );
 
-    const y11 = y2 - this._batteryToGridFlowWidth();
-    const y13 = y5 + this._gridToBatteryFlowWidth();
+    const y11 = y2 - this._batteriesToGridFlowWidth();
+    const y13 = y5 + this._gridToBatteriesFlowWidth();
 
     const y17 = y13 + (y10 - y0);
 
     const x14 = x0 + this._generationToGridFlowWidth();
     const x15 = x14 + this._generationToBatteryFlowWidth();
     const x16 = x15 + this._generationToConsumersFlowWidth();
-    const x17 = x14 - this._gridToBatteryFlowWidth();
-    const x20 = x15 + this._batteryToGridFlowWidth();
+    const x17 = x14 - this._gridToBatteriesFlowWidth();
+    const x20 = x15 + this._batteriesToGridFlowWidth();
     const x21 = x20 + this._batteryToConsumersFlowWidth();
 
     const y4 = y5 + this._batteryToConsumersFlowWidth();
