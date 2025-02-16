@@ -36,6 +36,12 @@
           consumer2: {text: 'Dishwasher', rate: 7},
           consumer3: {text: "Lamp", rate: 2},
         }
+        sankey.batteryRoutes = {
+          batt1: {
+            in: { rate: 6, text: "Battery in" },
+            out: { rate: 9, text: "Battery out" },
+          }
+        }
       }, 50)
     </script>
     <style type="text/css">

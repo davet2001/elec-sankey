@@ -67,6 +67,11 @@ export interface ElecRoute {
   icon?: string;
 }
 
+export interface ElecRoutePair {
+  in: ElecRoute;
+  out: ElecRoute;
+}
+
 function debugPoint(x: number, y: number, label: string): TemplateResult {
   return svg`
     <circle cx="${x}" cy="${y}" r="3" fill="#22DDDD" />
@@ -233,6 +238,23 @@ function renderFlowByCorners(
   return svg_ret;
 }
 
+function renderRect(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  classname: string
+): TemplateResult {
+  return svg`
+  <rect
+  class=${classname}
+  x="${x}"
+  y="${y}"
+  height="${height}"
+  width="${width}"
+  />`;
+}
+
 /**
  * Generic render for rects where flow blends from one colour to another.
  */
@@ -354,6 +376,9 @@ export class ElecSankey extends LitElement {
 
   @property({ attribute: false })
   public consumerRoutes: { [id: string]: ElecRoute } = {};
+
+  @property({ attribute: false })
+  public batteryRoutes: { [id: string]: ElecRoutePair } = {};
 
   @property({ attribute: false })
   public maxConsumerBranches: number = 0;
@@ -1190,6 +1215,7 @@ export class ElecSankey extends LitElement {
   }
 
   protected renderBatteriesInOutFlow(
+    x1: number,
     x17: number,
     x14: number,
     x15: number,
@@ -1204,6 +1230,11 @@ export class ElecSankey extends LitElement {
     // if (false * 1) {
     //   return nothing;
     // }
+    const gridColor = this._gridColor();
+    const genColor = this._genColor();
+
+    const ratio = x14 - x17 < 1 ? 1 : (x14 - x17) / (x15 - x17);
+    const battInBlendColor = mixHexes(gridColor, genColor, ratio);
     svgRetArray.push(
       renderBlendFlow(
         x14,
@@ -1214,11 +1245,58 @@ export class ElecSankey extends LitElement {
         y18,
         x17,
         y18,
-        this._gridColor(),
-        this._battColor(), //@todo replace with blend color.
+        gridColor,
+        battInBlendColor,
         "grid-to-batt-blend"
       )
     );
+    svgRetArray.push(
+      renderBlendFlow(
+        x15,
+        y17,
+        x14,
+        y17,
+        x15,
+        y18,
+        x14,
+        y18,
+        genColor,
+        battInBlendColor,
+        "gen-to-batt-blend"
+      )
+    );
+    svgRetArray.push(renderRect(x15, y17, x21 - x15, y18 - y17, "battery"));
+
+    const batteryRoutes: { [id: string]: ElecRoutePair } = this.batteryRoutes;
+
+    let xA: number = x21;
+    let yA: number = y18;
+    for (const key in batteryRoutes) {
+      if (!Object.prototype.hasOwnProperty.call(batteryRoutes, key)) {
+        console.error("error fetching battery route: " + key);
+        continue;
+      }
+      const batt = batteryRoutes[key];
+      const widthIn = this._rateToWidth(batt.in.rate);
+      const widthOut = this._rateToWidth(batt.out.rate);
+      const curvePadTemp = x1 - x21;
+      svgRetArray.push(
+        renderFlowByCorners(
+          xA,
+          y18,
+          xA - widthOut,
+          y18,
+          x1,
+          yA + curvePadTemp,
+          x1,
+          yA + curvePadTemp + widthOut,
+          "battery"
+        )
+      );
+      xA += widthOut;
+      yA += widthOut + widthOut;
+    }
+
     return svg`
       ${svgRetArray}
     `;
@@ -1398,6 +1476,7 @@ export class ElecSankey extends LitElement {
       y11
     );
     const battInOutBlendSvg = this.renderBatteriesInOutFlow(
+      x1,
       x17,
       x14,
       x15,
