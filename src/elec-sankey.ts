@@ -44,6 +44,7 @@ const PAD_MULTIPLIER = 1.0;
 
 const GEN_COLOR = "#0d6a04";
 const GRID_IN_COLOR = "#920e83";
+const BATT_OUT_COLOR = "#01f4fc";
 
 const BLEND_LENGTH = 80;
 const BLEND_LENGTH_PRE_FAN_OUT = 20;
@@ -230,6 +231,73 @@ function renderFlowByCorners(
   />
 `;
   return svg_ret;
+}
+
+/**
+ * Generic render for rects where flow blends from one colour to another.
+ */
+function renderBlendFlow(
+  startLX: number,
+  startLY: number,
+  startRX: number,
+  startRY: number,
+  endLX: number,
+  endLY: number,
+  endRX: number,
+  endRY: number,
+  startColor: string,
+  endColor: string,
+  id: string
+): TemplateResult | symbol {
+  if (
+    !(
+      (startLX == startRX && endLX == endRY) ||
+      (startLY == startRY && endLY == endRY)
+    )
+  ) {
+    console.error(
+      "Unsupported blend flow dimensions - only horiz/vert are implemented."
+    );
+    return nothing;
+  }
+  const horizontal: boolean = startLX == startRX;
+  let height, width;
+  let x1, y1, x2, y2;
+  if (horizontal) {
+    height = Math.abs(startLY - startRY);
+    width = Math.abs(startLX - endLX);
+    y1 = "0%";
+    y2 = "0%";
+    x1 = startLX < endLX ? "0%" : "100%"; // Left to right.
+    x2 = startLX < endLX ? "100%" : "0%"; // Rigth to left.
+  } else {
+    height = Math.abs(startLY - endLY);
+    width = Math.abs(startLX - startRX);
+    x1 = "0%";
+    x2 = "0%";
+    y1 = startLY < endLY ? "0%" : "100%"; // Top to bottom.
+    y2 = startLY < endLY ? "100%" : "0%"; // Bottom to top.
+  }
+  const topLeftX = Math.min(startLX, startRX, endLX, endRX);
+  const topLeftY = Math.min(startLY, startRY, endLY, endRY);
+  const svgRet = svg`
+    <defs>
+      <linearGradient id="${id}_grad" x1=${x1} y1=${y1} x2=${x2} y2=${y2}>
+        <stop offset="0%" style="stop-color:${startColor};stop-opacity:1" />
+        <stop offset="100%" style="stop-color:${endColor};stop-opacity:1" />
+      </linearGradient>
+    </defs>
+    <rect
+      id="${id}"
+      x="${topLeftX}"
+      y="${topLeftY}"
+      height="${height}"
+      width="${width}"
+      fill="url(#${id}_grad)"
+      style="fill-opacity:1"
+    />
+  `;
+  return svgRet;
 }
 
 /**
@@ -560,6 +628,12 @@ export class ElecSankey extends LitElement {
     return ret || GRID_IN_COLOR;
   }
 
+  private _battColor(): string {
+    const computedStyles = getComputedStyle(this);
+    const ret = computedStyles.getPropertyValue("--batt-out-color").trim();
+    return ret || BATT_OUT_COLOR;
+  }
+
   protected _generateLabelDiv(
     _id: string | undefined,
     icon: string | undefined,
@@ -591,6 +665,7 @@ export class ElecSankey extends LitElement {
   }
 
   protected renderGenerationToConsumersFlow(
+    x0: number,
     y0: number,
     x15: number,
     x16: number,
@@ -611,8 +686,8 @@ export class ElecSankey extends LitElement {
       (this._phantomGenerationInRoute !== undefined ? 1 : 0);
     const fanOutWidth =
       totalGenWidth + (count - 1) * GENERATION_FAN_OUT_HORIZONTAL_GAP;
-    let xA = GEN_ORIGIN_X - fanOutWidth / 2;
-    let xB = GEN_ORIGIN_X - totalGenWidth / 2;
+    let xA = x0 + totalGenWidth / 2 - fanOutWidth / 2;
+    let xB = x0;
     const svgArray: TemplateResult[] = [];
     const divArray: TemplateResult[] = [];
 
@@ -1114,6 +1189,41 @@ export class ElecSankey extends LitElement {
     return [divRetArray, svgRetArray, yRight];
   }
 
+  protected renderBatteriesInOutFlow(
+    x17: number,
+    x14: number,
+    x15: number,
+    x20: number,
+    x21: number,
+    y17: number,
+    y18: number
+  ): TemplateResult | symbol {
+    const svgRetArray: Array<TemplateResult | symbol> = [];
+
+    // @todo if batteries aren't present, skip.
+    // if (false * 1) {
+    //   return nothing;
+    // }
+    svgRetArray.push(
+      renderBlendFlow(
+        x14,
+        y17,
+        x17,
+        y17,
+        x14,
+        y18,
+        x17,
+        y18,
+        this._gridColor(),
+        this._battColor(), //@todo replace with blend color.
+        "grid-to-batt-blend"
+      )
+    );
+    return svg`
+      ${svgRetArray}
+    `;
+  }
+
   protected _gridBlendRatio(): number {
     if (!this.gridInRoute) {
       return 0;
@@ -1232,6 +1342,7 @@ export class ElecSankey extends LitElement {
     const x21 = x20 + this._batteryToConsumersFlowWidth();
 
     const y4 = y5 + this._batteryToConsumersFlowWidth();
+    const y18 = y17 + BLEND_LENGTH;
 
     const svgCanvasWidth = x1;
     const svgVisibleWidth = SVG_LHS_VISIBLE_WIDTH;
@@ -1246,6 +1357,7 @@ export class ElecSankey extends LitElement {
       y17
     );
     const [genInFlowDiv, genInFlowSvg] = this.renderGenerationToConsumersFlow(
+      x0,
       y0,
       x15,
       x16,
@@ -1285,6 +1397,15 @@ export class ElecSankey extends LitElement {
       y2,
       y11
     );
+    const battInOutBlendSvg = this.renderBatteriesInOutFlow(
+      x17,
+      x14,
+      x15,
+      x20,
+      x21,
+      y17,
+      y18
+    );
 
     const ymax = Math.max(y5, y8);
     return html`<div class="card-content">
@@ -1305,7 +1426,7 @@ export class ElecSankey extends LitElement {
             >
               ${genInFlowSvg} ${generationToGridFlowSvg} ${genToBattFlowSvg}
               ${gridToBattFlowSvg} ${gridInFlowSvg} ${consOutFlowsDiv}
-              ${battToConsFlowSvg} ${battToGridFlowSvg}
+              ${battToConsFlowSvg} ${battToGridFlowSvg} ${battInOutBlendSvg}
               ${debugPoint(x0, y0, "x0,y0")} ${debugPoint(x1 - 20, y1, "x1,y1")}
               ${debugPoint(x2 - 20, y2, "x2,y2")}
               ${debugPoint(x10, y10, "x10,y10")}
@@ -1439,7 +1560,7 @@ export class ElecSankey extends LitElement {
         fill: var(--grid-in-color, #920e83);
       }
       path.battery {
-        fill: var(--grid-in-color, #01f4fc);
+        fill: var(--batt-out-color, #01f4fc);
       }
       polygon {
         stroke: none;
@@ -1467,7 +1588,7 @@ export class ElecSankey extends LitElement {
         fill: var(--grid-in-color, #920e83);
       }
       rect.battery {
-        fill: var(--grid-in-color, #01f4fc);
+        fill: var(--batt-out-color, #01f4fc);
       }
     }
   `;
