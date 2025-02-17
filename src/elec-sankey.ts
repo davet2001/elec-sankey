@@ -410,7 +410,11 @@ export class ElecSankey extends LitElement {
   private _batteriesToConsumersRate: number = 0;
 
   private _gridToBatteriesRate = 0;
-  private _genToBatteriesRate = 0;
+  private _generationToBatteriesRate = 0;
+
+  private _genToGridRate = 0;
+
+  private _generationToConsumersRate = 0;
 
   private _generationTrackedTotal(): number {
     let totalGen = 0;
@@ -486,9 +490,6 @@ export class ElecSankey extends LitElement {
     const batteryOutTotal = this._batteryOutTotal();
     const batteryInTotal = this._batteryInTotal();
 
-    this._gridToBatteriesRate = batteryInTotal / 2;
-    this._genToBatteriesRate = batteryInTotal / 2;
-
     // Balance the books.
     let phantomGridIn = 0;
     let phantomGeneration = 0;
@@ -511,6 +512,15 @@ export class ElecSankey extends LitElement {
     this._batteriesToConsumersRate =
       batteryOutTotal - this._batteriesToGridRate;
 
+    // The only two ways we can export is from battery and generation
+    this._genToGridRate = this._gridExport - this._batteriesToGridRate;
+    let generationToConsumers;
+    let generationToBatteries = 0;
+    if (consumerTrackedTotal > generationTrackedTotal) {
+      generationToConsumers = generationTrackedTotal - this._genToGridRate;
+    } else {
+      generationToConsumers = generationTrackedTotal - this._genToGridRate;
+    }
     // Do we have an excess of consumption?
     x =
       consumerTrackedTotal -
@@ -585,18 +595,22 @@ export class ElecSankey extends LitElement {
       consumerTrackedTotal +
       (this._untrackedConsumerRoute ? this._untrackedConsumerRoute.rate : 0);
 
+    this._generationToConsumersRate = generationToConsumers;
+    this._generationToBatteriesRate = generationToBatteries;
+    this._gridToBatteriesRate = batteryInTotal - generationToBatteries;
+
     const widest_trunk = Math.max(genTotal, gridInTotal, consumerTotal, 1.0);
     this._rateToWidthMultplier = TARGET_SCALED_TRUNK_WIDTH / widest_trunk;
   }
 
-  private _generationToConsumers(): number {
-    // @todo if we support batteries in the future, need to modify this.
-    const genToGrid = this._gridExport;
-    if (genToGrid > 0) {
-      return this._generationTotal() - genToGrid;
-    }
-    return this._generationTotal();
-  }
+  // private _generationToConsumers(): number {
+  //   // @todo if we support batteries in the future, need to modify this.
+  //   const genToGrid = this._gridExport;
+  //   if (genToGrid > 0) {
+  //     return this._generationTotal() - genToGrid;
+  //   }
+  //   return this._generationTotal();
+  // }
 
   private _rateToWidth(rate: number): number {
     const value = rate * this._rateToWidthMultplier;
@@ -612,10 +626,13 @@ export class ElecSankey extends LitElement {
   }
 
   private _generationToConsumersFlowWidth(): number {
-    if (this._generationToConsumers() == 0 && !this.generationInRoutes.length) {
+    if (
+      this._generationToConsumersRate == 0 &&
+      !this.generationInRoutes.length
+    ) {
       return 0;
     }
-    return this._rateToWidth(this._generationToConsumers());
+    return this._rateToWidth(this._generationToConsumersRate);
   }
 
   private _generationToGridFlowWidth(): number {
@@ -623,7 +640,7 @@ export class ElecSankey extends LitElement {
       return 0;
     }
     if (this.gridOutRoute) {
-      return this._rateToWidth(this._gridExport);
+      return this._rateToWidth(this._gridExport - this._batteriesToGridRate);
     }
     if (!this.gridInRoute) {
       return 0;
@@ -662,7 +679,7 @@ export class ElecSankey extends LitElement {
   }
 
   private _generationToBatteryFlowWidth(): number {
-    return this._rateToWidth(this._genToBatteriesRate);
+    return this._rateToWidth(this._generationToBatteriesRate);
   }
 
   private _gridToBatteriesFlowWidth(): number {
