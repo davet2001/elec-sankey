@@ -403,6 +403,8 @@ export class ElecSankey extends LitElement {
     rate: 0,
   };
 
+  private _gridExport: number = 0;
+
   private _batteriesToGridRate: number = 0;
 
   private _batteriesToConsumersRate: number = 0;
@@ -433,16 +435,6 @@ export class ElecSankey extends LitElement {
   private _gridImport(): number {
     if (this.gridInRoute) {
       return this.gridInRoute.rate > 0 ? this.gridInRoute.rate : 0;
-    }
-    return 0;
-  }
-
-  private _gridExport(): number {
-    if (this.gridOutRoute) {
-      return this.gridOutRoute.rate > 0 ? this.gridOutRoute.rate : 0;
-    }
-    if (this.gridInRoute) {
-      return this.gridInRoute.rate < 0 ? -this.gridInRoute.rate : 0;
     }
     return 0;
   }
@@ -479,7 +471,16 @@ export class ElecSankey extends LitElement {
 
   private _recalculate() {
     const gridImport = this._gridImport();
-    const gridExport = this._gridExport();
+
+    if (this.gridOutRoute) {
+      this._gridExport =
+        this.gridOutRoute.rate > 0 ? this.gridOutRoute.rate : 0;
+    } else if (this.gridInRoute) {
+      this._gridExport = this.gridInRoute.rate < 0 ? -this.gridInRoute.rate : 0;
+    } else {
+      this._gridExport = 0;
+    }
+
     const generationTrackedTotal = this._generationTrackedTotal();
     const consumerTrackedTotal = this._consumerTrackedTotal();
     const batteryOutTotal = this._batteryOutTotal();
@@ -493,14 +494,14 @@ export class ElecSankey extends LitElement {
     let phantomGeneration = 0;
     let untrackedConsumer = 0;
     // First check if we are exporting more than we are generating + discharging.
-    let x = gridExport - generationTrackedTotal - batteryOutTotal;
+    let x = this._gridExport - generationTrackedTotal - batteryOutTotal;
     if (x > 0) {
       // In this case, we must have a phantom generation source,
       phantomGeneration = x;
       // and we assume that all battery output is going to the grid.
       this._batteriesToGridRate = batteryOutTotal;
     } else {
-      const battToGridTemp = gridExport - generationTrackedTotal;
+      const battToGridTemp = this._gridExport - generationTrackedTotal;
       if (battToGridTemp > 0) {
         this._batteriesToGridRate = battToGridTemp;
       } else {
@@ -531,7 +532,7 @@ export class ElecSankey extends LitElement {
       phantomGridIn -
       phantomGeneration -
       batteryOutTotal -
-      (generationTrackedTotal - gridExport);
+      (generationTrackedTotal - this._gridExport);
     if (x > 0) {
       // We must have an unknown generation source
       phantomGeneration += x;
@@ -542,7 +543,7 @@ export class ElecSankey extends LitElement {
       gridImport -
       phantomGridIn -
       batteryInTotal -
-      (generationTrackedTotal + phantomGeneration - gridExport);
+      (generationTrackedTotal + phantomGeneration - this._gridExport);
     if (x < 0) {
       // There is an untracked energy consumer.
       untrackedConsumer = -x;
@@ -590,7 +591,7 @@ export class ElecSankey extends LitElement {
 
   private _generationToConsumers(): number {
     // @todo if we support batteries in the future, need to modify this.
-    const genToGrid = this._gridExport();
+    const genToGrid = this._gridExport;
     if (genToGrid > 0) {
       return this._generationTotal() - genToGrid;
     }
@@ -618,11 +619,11 @@ export class ElecSankey extends LitElement {
   }
 
   private _generationToGridFlowWidth(): number {
-    if (this._gridExport() <= 0) {
+    if (this._gridExport <= 0) {
       return 0;
     }
     if (this.gridOutRoute) {
-      return this._rateToWidth(this._gridExport());
+      return this._rateToWidth(this._gridExport);
     }
     if (!this.gridInRoute) {
       return 0;
@@ -930,7 +931,7 @@ export class ElecSankey extends LitElement {
 
     const x_width = topRightX;
     const rateA = this._gridImport();
-    const rateB = this._gridExport();
+    const rateB = this._gridExport;
 
     const midY = startTerminatorY - this._gridOutFlowWidth() + tot_width / 2;
     const divHeight = ICON_SIZE_PX + TEXT_PADDING + FONT_SIZE_PX * 2;
@@ -1409,7 +1410,7 @@ export class ElecSankey extends LitElement {
     const renewable =
       this._generationTrackedTotal() +
       this._generationPhantom() -
-      this._gridExport();
+      this._gridExport;
     const ratio = grid / (grid + renewable);
     if (ratio < 0) {
       return 0;
