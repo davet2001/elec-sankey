@@ -485,10 +485,6 @@ export class ElecSankey extends LitElement {
     const batteryOutTotal = this._batteryOutTotal();
     const batteryInTotal = this._batteryInTotal();
 
-    // @todo need a proper calculation here
-    this._batteriesToGridRate = batteryOutTotal / 2;
-    this._batteriesToConsumersRate = batteryOutTotal / 2;
-
     this._gridToBatteriesRate = batteryInTotal / 2;
     this._genToBatteriesRate = batteryInTotal / 2;
 
@@ -496,18 +492,31 @@ export class ElecSankey extends LitElement {
     let phantomGridIn = 0;
     let phantomGeneration = 0;
     let untrackedConsumer = 0;
-
-    // First check if we are exporting more than we are generating.
-    let x = gridExport - generationTrackedTotal;
+    // First check if we are exporting more than we are generating + discharging.
+    let x = gridExport - generationTrackedTotal - batteryOutTotal;
     if (x > 0) {
+      // In this case, we must have a phantom generation source,
       phantomGeneration = x;
+      // and we assume that all battery output is going to the grid.
+      this._batteriesToGridRate = batteryOutTotal;
+    } else {
+      const battToGridTemp = gridExport - generationTrackedTotal;
+      if (battToGridTemp > 0) {
+        this._batteriesToGridRate = battToGridTemp;
+      } else {
+        this._batteriesToGridRate = 0;
+      }
     }
+    this._batteriesToConsumersRate =
+      batteryOutTotal - this._batteriesToGridRate;
+
     // Do we have an excess of consumption?
     x =
       consumerTrackedTotal -
       gridImport -
       generationTrackedTotal -
-      phantomGeneration;
+      phantomGeneration -
+      batteryOutTotal;
     if (x > 0) {
       // There is an unknown energy source.
       if (this.gridInRoute === undefined && this.gridOutRoute === undefined) {
@@ -521,6 +530,7 @@ export class ElecSankey extends LitElement {
       gridImport -
       phantomGridIn -
       phantomGeneration -
+      batteryOutTotal -
       (generationTrackedTotal - gridExport);
     if (x > 0) {
       // We must have an unknown generation source
@@ -531,6 +541,7 @@ export class ElecSankey extends LitElement {
       consumerTrackedTotal -
       gridImport -
       phantomGridIn -
+      batteryInTotal -
       (generationTrackedTotal + phantomGeneration - gridExport);
     if (x < 0) {
       // There is an untracked energy consumer.
