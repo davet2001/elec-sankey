@@ -768,23 +768,28 @@ export class ElecSankey extends LitElement {
   }
 
   private _gridToConsumersFlowWidth(): number {
-    return this._rateToWidth(this._gridToConsumersRate);
+    const rate = this._gridToConsumersRate;
+    return rate ? this._rateToWidth(rate) : 0;
   }
 
   private _batteriesToGridFlowWidth(): number {
-    return this._rateToWidth(this._batteriesToGridRate);
+    const rate = this._batteriesToGridRate;
+    return rate ? this._rateToWidth(rate) : 0;
   }
 
   private _batteryToConsumersFlowWidth(): number {
-    return this._rateToWidth(this._batteriesToConsumersRate);
+    const rate = this._batteriesToConsumersRate;
+    return rate ? this._rateToWidth(rate) : 0;
   }
 
   private _generationToBatteryFlowWidth(): number {
-    return this._rateToWidth(this._generationToBatteriesRate);
+    const rate = this._generationToBatteriesRate;
+    return rate ? this._rateToWidth(rate) : 0;
   }
 
   private _gridToBatteriesFlowWidth(): number {
-    return this._rateToWidth(this._gridToBatteriesRate);
+    const rate = this._gridToBatteriesRate;
+    return rate ? this._rateToWidth(rate) : 0;
   }
 
   private _consumersFanOutTotalHeight(): number {
