@@ -477,8 +477,21 @@ export class ElecSankey extends LitElement {
   }
 
   private _recalculate() {
+    /**
+     * Note that it is not 100% possible to fully determine the actual flow of
+     * electrons in all secenarios.
+     *
+     * The goal of this strategy is to present a viable diagram given the
+     * input data, with a leaning in specific directions where there is
+     * uncertainty. The most complex version is for energy flow, which can
+     * accumulate in both directions for certain flows (grid, batteries etc).
+     * The calculation is based on energy. Power flow is a simpler case, with
+     * each flow only possible to be in or out (not both), but they are both
+     * calculated using the same algorithm, documented inline below.
+     */
     const gridImport = this._gridImport();
 
+    // Determine the grid import and export
     if (this.gridOutRoute) {
       this._gridExport =
         this.gridOutRoute.rate > 0 ? this.gridOutRoute.rate : 0;
@@ -502,14 +515,20 @@ export class ElecSankey extends LitElement {
     let gridToBatteriesTemp = 0;
     let generationToBatteriesTemp = 0;
     let gridToConsumersTemp = 0;
-    // First check if we are exporting more than we are generating + discharging.
+    // Check if we are exporting more than we are generating or flowing from
+    // batteries.
     let x = this._gridExport - generationTrackedTotal - batteryOutTotal;
     if (x > 0) {
-      // In this case, we must have a phantom generation source,
+      // If this is the case, we create a phantom generation source
+      // of sufficient value to balance thie equation, and assume that all
+      // battery power is going to the grid.
       phantomGeneration = x;
-      // and we assume that all battery output is going to the grid.
       batteriesToGridTemp = batteryOutTotal;
     } else {
+      // If we aren't exporting more than generating + discharging, the diagram
+      // is viable without a phantom generation source. *For now* we assume
+      // the maximum possible split of battery rate that could go the grid is
+      // going to the grid, the rest goes to consumers.
       if (this._gridExport > batteryOutTotal) {
         batteriesToGridTemp = batteryOutTotal;
         generationToGridTemp = this._gridExport - batteryOutTotal;
@@ -518,6 +537,11 @@ export class ElecSankey extends LitElement {
         generationToGridTemp = 0;
       }
     }
+
+    // We then proceed on the basis that the full flow into the battery is
+    // coming from the grid (as far as the grid input allows). If there is
+    // more flow coming into the batteries than from the grid, we assume that
+    // that flow is coming from generation.
     let batteriesToConsumersTemp = batteryOutTotal - batteriesToGridTemp;
 
     if (gridImport > batteriesInTotal) {
@@ -526,8 +550,13 @@ export class ElecSankey extends LitElement {
       gridToBatteriesTemp = gridImport;
       generationToBatteriesTemp = batteriesInTotal - gridToBatteriesTemp;
     }
+
+    // All other grid input that is not going to batteries must be going to
+    // consumers, so we calculate that next.
     gridToConsumersTemp = gridImport - gridToBatteriesTemp;
 
+    // Now that we have generation to grid & generation to batteries, the
+    // remaining generation must be going to consumers, so we calculate that.
     let generationToConsumersTemp =
       generationTrackedTotal - generationToGridTemp - generationToBatteriesTemp;
 
@@ -538,6 +567,8 @@ export class ElecSankey extends LitElement {
       generationToConsumersTemp =
         generationTrackedTotal - this._generationToGridRate;
     }
+
+    // The three items add together to give the consumer total.
     let consumerTotalA =
       generationToConsumersTemp +
       gridToConsumersTemp +
@@ -557,6 +588,7 @@ export class ElecSankey extends LitElement {
           batteriesToConsumersTemp;
       }
     }
+
     // Retry balance - are we consuming more than we are generating/importing?
     x = consumerTrackedTotal - consumerTotalA;
     if (x > 0) {
@@ -569,9 +601,12 @@ export class ElecSankey extends LitElement {
       gridToConsumersTemp +
       batteriesToConsumersTemp;
 
+    // If we are still sending more to consumers than we are tracking, we must
+    // have untracked consumers (which will almost always be the case).
+
     x = consumerTrackedTotal - consumerTotalA;
     if (x < 0) {
-      // There is an untracked energy consumer.
+      // In this case, calculate the size of the untracked consumer.
       untrackedConsumer = -x;
     }
 
