@@ -1169,16 +1169,16 @@ export class ElecSankey extends LitElement {
   }
 
   protected _renderBlendedFlowPreFanOut(
+    y1: number,
     y4: number,
-    y5: number,
     color: string
   ): TemplateResult {
     const svgRet = svg`
     <rect
       id="blended-flow-pre-fan-out-rect"
       x=${CONSUMER_BLEND_LENGTH}
-      y="${y4}"
-      height="${y5 - y4}"
+      y="${y1}"
+      height="${y4 - y1}"
       width="${CONSUMER_BLEND_LENGTH_PRE_FAN_OUT + 1}"
       style="fill:${color};fill-opacity:1"
     />
@@ -1599,11 +1599,6 @@ export class ElecSankey extends LitElement {
 
     const genInBlendFlowSvg = this.renderGenInBlendFlow(y1, blendColor);
     const [gridInBlendFlowSvg, y5] = this.renderGridInBlendFlow(y2, blendColor);
-    const blendedFlowPreFanOut = this._renderBlendedFlowPreFanOut(
-      y1,
-      y5,
-      blendColor
-    );
 
     const y11 = y2 - this._batteriesToGridFlowWidth();
     const y13 = y5 + this._gridToBatteriesFlowWidth();
@@ -1690,6 +1685,11 @@ export class ElecSankey extends LitElement {
       blendColor
     );
 
+    const blendedFlowPreFanOut = this._renderBlendedFlowPreFanOut(
+      y1,
+      y4,
+      blendColor
+    );
     const ymax = Math.max(y4, y8);
     return html`<div class="card-content">
       <div class="col1 container">
