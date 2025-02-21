@@ -359,10 +359,21 @@ function renderBlendRect(
  * `;
  * }
  * ${debugPoint(x0, y0, "x0,y0")}
- * ${debugPoint(x1, y1, "x1,y1")} ${debugPoint(x2, y2, "x2,y2")}
- * ${debugPoint(x3, y3, "x3,y3")} ${debugPoint(x4, y4, "x4,y4")}
- * ${debugPoint(x5, y5, "x5,y5")} ${debugPoint(x6, y6, "x6,y6")}
- * ${debugPoint(x7, y7, "x7,y7")} ${debugPoint(x10, y10, "x10,y10")}
+*  ${debugPoint(x1 - 20, y1, "x1,y1")}
+*  ${debugPoint(x2 - 20, y2, "x2,y2")}
+*  ${debugPoint(x10, y10, "x10,y10")}
+*  ${debugPoint(x1 - 20, y5, "x1,y5")}
+*  ${debugPoint(x1 - 20, y4, "x1,y4")}
+*  ${debugPoint(x14, y0, "x14,y0")} ${debugPoint(x15, y0, "x15,y0")}
+*  ${debugPoint(x16, y0, "x16,y0")} ${debugPoint(x10, y2, "x10,y2")}
+*  ${debugPoint(x10, y11, "x10,y11")}
+*  ${debugPoint(x10, y5, "x10,y5")}
+*  ${debugPoint(x10, y13, "x10,y13")}
+*  ${debugPoint(x17, y17, "x17,y17")}
+*  ${debugPoint(x14, y17, "x14,y17")}
+*  ${debugPoint(x15, y17, "x15,y17")}
+*  ${debugPoint(x20, y17, "x20,y17")}
+*  ${debugPoint(x21, y17, "x21,y17")}
  */
 
 @customElement("elec-sankey")
@@ -491,13 +502,6 @@ export class ElecSankey extends LitElement {
      */
     const gridImport = this._gridImport();
 
-    let flagA = false,
-      flagB = false,
-      flagC = false,
-      flagD = false,
-      flagE = false,
-      flagF = false,
-      flagG = false;
     // Determine the grid import and export
     if (this.gridOutRoute) {
       this._gridExport =
@@ -526,7 +530,6 @@ export class ElecSankey extends LitElement {
     // batteries.
     let x = this._gridExport - generationTrackedTotal - batteryOutTotal;
     if (x > 0) {
-      flagA = true;
       // If this is the case, we create a phantom generation source
       // of sufficient value to balance thie equation, and assume that all
       // battery power is going to the grid.
@@ -555,7 +558,6 @@ export class ElecSankey extends LitElement {
     if (gridImport > batteriesInTotal) {
       gridToBatteriesTemp = batteriesInTotal;
     } else {
-      flagB = true;
       gridToBatteriesTemp = gridImport;
       generationToBatteriesTemp = batteriesInTotal - gridToBatteriesTemp;
     }
@@ -566,14 +568,12 @@ export class ElecSankey extends LitElement {
       generationToBatteriesTemp -
       (generationTrackedTotal + gridToBatteriesTemp);
     if (x > 0) {
-      flagG = true;
       phantomGeneration = x;
     }
 
     // All grid input that is not going to batteries must be going to
     // consumers, so we calculate that next.
     gridToConsumersTemp = gridImport - gridToBatteriesTemp;
-    console.log("gridToConsumersTemp 3=", gridToConsumersTemp);
 
     // Now that we have generation to grid & generation to batteries, the
     // remaining generation must be going to consumers, so we calculate that.
@@ -584,7 +584,6 @@ export class ElecSankey extends LitElement {
     if (generationToConsumersTemp < 0) {
       generationToConsumersTemp = 0;
     }
-    console.log("generationToConsumersTemp 1=", generationToConsumersTemp);
     // If the generation to (grid + batteries + consumers) is more than
     // the total generation, we need to recalulate the phantom generation
     // source.
@@ -594,7 +593,6 @@ export class ElecSankey extends LitElement {
       generationToConsumersTemp -
       generationTrackedTotal;
     if (x > 0) {
-      flagC = true;
       phantomGeneration = x;
     }
 
@@ -607,7 +605,6 @@ export class ElecSankey extends LitElement {
     // Do we have an excess of consumption?
     x = consumerTrackedTotal - consumerTotalA;
     if (x > 0) {
-      flagD = true;
       // There is an unknown energy source.
       if (this.gridInRoute === undefined && this.gridOutRoute === undefined) {
         // If we aren't tracking grid sources, create a phantom one.
@@ -629,7 +626,6 @@ export class ElecSankey extends LitElement {
       generationToConsumersTemp -
       generationTrackedTotal;
     if (x > 0) {
-      flagE = true;
       phantomGeneration = x;
       // generationToConsumersTemp =
       //   generationTrackedTotal +
@@ -646,10 +642,8 @@ export class ElecSankey extends LitElement {
     // have untracked consumers (which will almost always be the case).
     x = consumerTotalA - consumerTrackedTotal;
     if (x > 0) {
-      flagF = true;
       // In this case, calculate the size of the untracked consumer.
       untrackedConsumer = x;
-      console.log("untracked consumer=", x);
     } else {
       // Conversely, if we are consuming more than we are sending to consumers,
       // we have not balanced the books - there must be more generation, so add
@@ -662,13 +656,6 @@ export class ElecSankey extends LitElement {
         generationToGridTemp -
         generationTrackedTotal;
     }
-
-    console.log("consumerTotalA=", consumerTotalA);
-    console.log("Grid to consumers temp=", gridToConsumersTemp);
-    console.log("batteries to consumers temp=", batteriesToConsumersTemp);
-
-    console.log("generation to consumers temp=", generationToConsumersTemp);
-    console.log("consumerTrackedTotal=", consumerTrackedTotal);
 
     this._phantomGridInRoute =
       phantomGridIn > 0
@@ -692,13 +679,10 @@ export class ElecSankey extends LitElement {
         text: "Untracked",
         rate: untrackedConsumer,
       };
-      console.log(
-        "untracked consumer final rate =",
-        this._untrackedConsumerRoute.rate
-      );
     }
 
-    /**
+    /**      flagF = true;
+
      * Calculate and update a scaling factor to make the UI look sensible.
      * Since there is no limit to the value of input/output rates, the scaling
      * needs to be dynamic. This function calculates the scaling factor based
@@ -724,23 +708,6 @@ export class ElecSankey extends LitElement {
 
     const widest_trunk = Math.max(genTotal, gridInTotal, consumerTotal, 1.0);
     this._rateToWidthMultplier = TARGET_SCALED_TRUNK_WIDTH / widest_trunk;
-
-    console.log(
-      "A=",
-      flagA,
-      "B=",
-      flagB,
-      "C=",
-      flagC,
-      "D=",
-      flagD,
-      "E=",
-      flagE,
-      "F=",
-      flagF,
-      "G=",
-      flagG
-    );
   }
 
   // private _generationToConsumers(): number {
@@ -772,23 +739,13 @@ export class ElecSankey extends LitElement {
     ) {
       return 0;
     }
-    return this._rateToWidth(this._generationToConsumersRate);
+    const rate = this._generationToConsumersRate;
+    return rate ? this._rateToWidth(rate) : 0;
   }
 
   private _generationToGridFlowWidth(): number {
-    // if (this._gridExport <= 0) {
-    //   return 0;
-    // }
-    // if (this.gridOutRoute) {
-    //   return this._rateToWidth(this._gridExport - this._batteriesToGridRate);
-    // }
-    // if (!this.gridInRoute) {
-    //   return 0;
-    // }
-    // if (this.gridInRoute.rate > 0) {
-    //   return 0;
-    // }
-    return this._rateToWidth(this._generationToGridRate);
+    const rate = this._generationToGridRate;
+    return rate ? this._rateToWidth(rate) : 0;
   }
 
   private _gridInFlowWidth(): number {
@@ -1649,7 +1606,6 @@ export class ElecSankey extends LitElement {
     number
   ] {
     const widthGenToConsumers = this._generationToConsumersFlowWidth();
-    console.log("widthGenToConsumers", widthGenToConsumers);
     const widthGenToGrid = this._generationToGridFlowWidth();
     const widthGenToBatteries = this._generationToBatteryFlowWidth();
     const widthBatteriesToGrid = this._batteriesToGridFlowWidth();
@@ -1694,7 +1650,6 @@ export class ElecSankey extends LitElement {
 
     const x10 = ARROW_HEAD_LENGTH;
     const y10 = y2 - this._generationToGridFlowWidth() - widthBatteriesToGrid;
-    console.log("y1=", y1, "y2=", y2);
     return [x0, y0, x1, y1, x2, y2, x10, y10];
   }
 
@@ -1833,22 +1788,7 @@ export class ElecSankey extends LitElement {
               ${genInFlowSvg} ${generationToGridFlowSvg} ${genToBattFlowSvg}
               ${gridToBattFlowSvg} ${gridInFlowSvg} ${gridToConsumersFlowSvg}
               ${consOutFlowsDiv} ${battToConsFlowSvg} ${battToGridFlowSvg}
-              ${battInOutBlendSvg} ${debugPoint(x0, y0, "x0,y0")}
-              ${debugPoint(x1 - 20, y1, "x1,y1")}
-              ${debugPoint(x2 - 20, y2, "x2,y2")}
-              ${debugPoint(x10, y10, "x10,y10")}
-              ${debugPoint(x1 - 20, y5, "x1,y5")}
-              ${debugPoint(x1 - 20, y4, "x1,y4")}
-              ${debugPoint(x14, y0, "x14,y0")} ${debugPoint(x15, y0, "x15,y0")}
-              ${debugPoint(x16, y0, "x16,y0")} ${debugPoint(x10, y2, "x10,y2")}
-              ${debugPoint(x10, y11, "x10,y11")}
-              ${debugPoint(x10, y5, "x10,y5")}
-              ${debugPoint(x10, y13, "x10,y13")}
-              ${debugPoint(x17, y17, "x17,y17")}
-              ${debugPoint(x14, y17, "x14,y17")}
-              ${debugPoint(x15, y17, "x15,y17")}
-              ${debugPoint(x20, y17, "x20,y17")}
-              ${debugPoint(x21, y17, "x21,y17")}
+              ${battInOutBlendSvg}
             </svg>
           </div>
           <div class="sankey-mid">
