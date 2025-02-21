@@ -20,6 +20,9 @@
       };
       window.onload = init
       var intervalId = setInterval(function() {
+        if (!document.querySelector('.messageCheckbox').checked) {
+          return;
+        }
         const elapsedTime = (new Date()).getTime() - startTime;
         let heaterRate = (HEATER_MAX+HEATER_MIN)/2 + (HEATER_MAX-HEATER_MIN)/2*Math.sin(2 * Math.PI * HEATER_FREQ * elapsedTime/1000);
         let gridInRate = (GRID_IN_MAX+GRID_IN_MIN)/2 + (GRID_IN_MAX-GRID_IN_MIN)/2*Math.sin(2 * Math.PI * GRID_IN_FREQ * elapsedTime/1000);
@@ -56,6 +59,7 @@
   </head>
   <body style="margin-left: 24px">
     <h2>Example</h2>
+    <p>Animate:<input class="messageCheckbox" type="checkbox" value="1" name="animate" checked></p>
     <elec-sankey id="example1"
       unit="kWh"
     ></elec-sankey>
