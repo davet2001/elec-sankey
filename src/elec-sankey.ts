@@ -761,16 +761,6 @@ export class ElecSankey extends LitElement {
     return rate ? this._rateToWidth(rate) : 0;
   }
 
-  private _gridInFlowWidth(): number {
-    if (this.gridInRoute === undefined) {
-      return 0;
-    }
-    if (this.gridInRoute.rate > 0) {
-      return this._rateToWidth(this.gridInRoute.rate);
-    }
-    return 0;
-  }
-
   private _gridOutFlowWidth(): number {
     if (this.gridOutRoute === undefined) {
       return 0;
@@ -1033,9 +1023,8 @@ export class ElecSankey extends LitElement {
     svgScaleX: number,
     color: string
   ): TemplateResult | symbol {
-    const width = this._gridOutFlowWidth();
     const arrow_head_length = ARROW_HEAD_LENGTH / svgScaleX;
-    if (width === 0) {
+    if (this._gridOutFlowWidth() === 0) {
       return nothing;
     }
     return svg`
@@ -1149,7 +1138,7 @@ export class ElecSankey extends LitElement {
     y17: number,
     x14: number
   ): TemplateResult | symbol {
-    if (this._batteriesToGridFlowWidth() === 0) {
+    if (this._gridToBatteriesFlowWidth() === 0) {
       return nothing;
     }
     return renderFlowByCorners(x10, y5, x10, y13, x14, y17, x17, y17, "grid");
