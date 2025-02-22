@@ -1216,8 +1216,6 @@ export class ElecSankey extends LitElement {
     y5: number,
     endColor: string
   ): TemplateResult | symbol {
-    const width = this._gridToConsumersFlowWidth();
-
     return renderBlendRect(
       0,
       y2,
@@ -1472,6 +1470,7 @@ export class ElecSankey extends LitElement {
     const svgRetArray2: Array<TemplateResult | symbol> = [];
 
     const gap = CONSUMERS_FAN_OUT_VERTICAL_GAP / svgScaleX; // @todo if batteries aren't present, skip.
+    const arrow_head_length = ARROW_HEAD_LENGTH / svgScaleX;
     // if (false * 1) {
     //   return nothing;
     // }
@@ -1542,6 +1541,13 @@ export class ElecSankey extends LitElement {
           "battery"
         )
       );
+      svgRetArray.push(
+        svg`
+        <polygon points="${x1},${yA + curvePadTemp}
+        ${x1 - arrow_head_length},${yA + curvePadTemp + widthOut / 2},
+        ${x1},${yA + curvePadTemp + widthOut}"
+        class="tint"/>`
+      );
       xA -= widthOut;
       if (xA - x15 > 1) {
         svgRetArray.push(
@@ -1555,13 +1561,22 @@ export class ElecSankey extends LitElement {
           yA,
           xB - widthIn,
           yA,
-          x1,
+          x1 - arrow_head_length,
           yA + curvePadTemp + widthOut,
-          x1,
+          x1 - arrow_head_length,
           yA + curvePadTemp + widthOut + widthIn,
           "battery",
           battInBlendColor
         )
+      );
+      svgRetArray.push(
+        svg`
+        <polygon points="${x1 - arrow_head_length},${
+          yA + curvePadTemp + widthOut
+        }
+        ${x1},${yA + curvePadTemp + widthOut + widthIn / 2},
+        ${x1 - arrow_head_length},${yA + curvePadTemp + widthOut + widthIn}"
+        style="fill:${battInBlendColor}" />`
       );
       xB -= widthIn;
       if (xB - x17 > 1) {
