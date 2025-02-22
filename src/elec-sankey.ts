@@ -50,6 +50,7 @@ const BATT_OUT_COLOR = "#01f4fc";
 const CONSUMER_BLEND_LENGTH = 80;
 const CONSUMER_BLEND_LENGTH_PRE_FAN_OUT = 20;
 
+const GRID_BLEND_LENGTH = 30;
 const BATTERY_BLEND_LENGTH = 30;
 
 const ARROW_HEAD_LENGTH = 10;
@@ -992,7 +993,7 @@ export class ElecSankey extends LitElement {
   protected renderGenerationToGridFlow(
     x0: number,
     y0: number,
-    x10: number,
+    x11: number,
     y10: number,
     svgScaleX: number
   ): TemplateResult {
@@ -1006,9 +1007,9 @@ export class ElecSankey extends LitElement {
       y0,
       x0,
       y0,
-      x10,
+      x11,
       y10 + width,
-      x10,
+      x11,
       y10,
       "generation"
     );
@@ -1018,7 +1019,7 @@ export class ElecSankey extends LitElement {
     ${renderRect(
       arrow_head_length,
       y10,
-      x10 - arrow_head_length,
+      x11 - arrow_head_length,
       width,
       "generation"
     )}
@@ -1172,7 +1173,7 @@ export class ElecSankey extends LitElement {
     x15: number,
     y17: number,
     x20: number,
-    x10: number,
+    x11: number,
     y2: number,
     y11: number
   ): TemplateResult | symbol {
@@ -1184,14 +1185,63 @@ export class ElecSankey extends LitElement {
       y17,
       x20,
       y17,
-      x10,
+      x11,
       y2,
-      x10,
+      x11,
       y11,
       "battery"
     );
   }
 
+  protected renderGenToGridBlendFlow(
+    x10: number,
+    y10: number,
+    x11: number,
+    y11: number,
+    endColor: string
+  ): TemplateResult | symbol {
+    if (!this._generationToGridFlowWidth()) {
+      return nothing;
+    }
+    return renderBlendRect(
+      x11,
+      y11,
+      x11,
+      y10,
+      x10,
+      y11,
+      x10,
+      y10,
+      this._genColor(),
+      endColor,
+      "gen-grid-in-blend-rect"
+    );
+  }
+
+  protected renderBatteriesToGridBlendFlow(
+    x10: number,
+    y11: number,
+    x11: number,
+    y2: number,
+    endColor: string
+  ): TemplateResult | symbol {
+    if (!this._batteriesToGridFlowWidth()) {
+      return nothing;
+    }
+    return renderBlendRect(
+      x11,
+      y2,
+      x11,
+      y11,
+      x10,
+      y2,
+      x10,
+      y11,
+      this._battColor(),
+      endColor,
+      "batt-grid-in-blend-rect"
+    );
+  }
   protected renderGenInBlendFlow(
     y1: number,
     y2: number,
@@ -1773,11 +1823,12 @@ export class ElecSankey extends LitElement {
     const svgVisibleWidth = SVG_LHS_VISIBLE_WIDTH;
     const svgScaleX = svgVisibleWidth / svgCanvasWidth;
     const x10 = ARROW_HEAD_LENGTH / svgScaleX;
+    const x11 = x10 + GRID_BLEND_LENGTH;
 
     const generationToGridFlowSvg = this.renderGenerationToGridFlow(
       x0,
       y0,
-      x10,
+      x11,
       y10,
       svgScaleX
     );
@@ -1816,6 +1867,13 @@ export class ElecSankey extends LitElement {
     const y4 = y5 + this._batteryToConsumersFlowWidth();
     const y18 = y17 + BATTERY_BLEND_LENGTH;
 
+    const genToGridBlendSvg = this.renderGenToGridBlendFlow(
+      x10,
+      y10,
+      x11,
+      y11,
+      gridOutBlendColor
+    );
     const [gridInDiv, gridInFlowSvg] = this.renderGridInFlow(
       y2,
       y5,
@@ -1874,9 +1932,16 @@ export class ElecSankey extends LitElement {
       x15,
       y17,
       x20,
-      x10,
+      x11,
       y2,
       y11
+    );
+    const battToGridBlendFlowSvg = this.renderBatteriesToGridBlendFlow(
+      x10,
+      y11,
+      x11,
+      y2,
+      gridOutBlendColor
     );
     const [battInOutBlendSvg, y22] = this.renderBatteriesInOutFlow(
       x1,
@@ -1918,8 +1983,9 @@ export class ElecSankey extends LitElement {
               height=${ymax * svgScaleX}
               preserveAspectRatio="none"
             >
-              ${genInFlowSvg} ${generationToGridFlowSvg} ${gridOutArrowSvg}
-              ${genToBattFlowSvg} ${gridToBattFlowSvg} ${gridInFlowSvg}
+              ${genInFlowSvg} ${generationToGridFlowSvg} ${genToGridBlendSvg}
+              ${gridOutArrowSvg} ${genToBattFlowSvg} ${gridToBattFlowSvg}
+              ${battToGridBlendFlowSvg} ${gridInFlowSvg}
               ${gridToConsumersFlowSvg} ${consOutFlowsDiv} ${battToConsFlowSvg}
               ${battToGridFlowSvg} ${battInOutBlendSvg}
             </svg>
