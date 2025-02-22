@@ -703,8 +703,7 @@ export class ElecSankey extends LitElement {
       };
     }
 
-    /**      flagF = true;
-
+    /**
      * Calculate and update a scaling factor to make the UI look sensible.
      * Since there is no limit to the value of input/output rates, the scaling
      * needs to be dynamic. This function calculates the scaling factor based
@@ -1407,6 +1406,7 @@ export class ElecSankey extends LitElement {
     const xRight = 100 - ARROW_HEAD_LENGTH;
     let i = 0;
     const total_height = this._consumersFanOutTotalHeight();
+    const gap = CONSUMERS_FAN_OUT_VERTICAL_GAP / svgScaleX;
     let yLeft = y1;
     let yRight = (y1 + y5) / 2 - total_height / 2;
     if (yRight < TEXT_PADDING) {
@@ -1431,7 +1431,7 @@ export class ElecSankey extends LitElement {
         );
         divRetArray.push(divRow);
         svgRetArray.push(svgRow);
-        yRight += CONSUMERS_FAN_OUT_VERTICAL_GAP;
+        yRight += gap;
       }
     }
 
@@ -1447,10 +1447,10 @@ export class ElecSankey extends LitElement {
     );
     divRetArray.push(divRow);
     svgRetArray.push(svgRow);
-    yRight += CONSUMERS_FAN_OUT_VERTICAL_GAP;
+    yRight += gap;
 
     if (svgRetArray.length > 0) {
-      yRight += CONSUMERS_FAN_OUT_VERTICAL_GAP;
+      yRight += gap;
     }
     return [divRetArray, svgRetArray, yRight];
   }
@@ -1463,14 +1463,15 @@ export class ElecSankey extends LitElement {
     x20: number,
     x21: number,
     y17: number,
-    y18: number
-  ): TemplateResult | symbol {
+    y18: number,
+    svgScaleX
+  ): [TemplateResult | symbol, number] {
     // Bottom layer
     const svgRetArray: Array<TemplateResult | symbol> = [];
     // Top layer
     const svgRetArray2: Array<TemplateResult | symbol> = [];
 
-    // @todo if batteries aren't present, skip.
+    const gap = CONSUMERS_FAN_OUT_VERTICAL_GAP / svgScaleX; // @todo if batteries aren't present, skip.
     // if (false * 1) {
     //   return nothing;
     // }
@@ -1518,6 +1519,7 @@ export class ElecSankey extends LitElement {
 
     let xB: number = x15;
 
+    let curvePadTemp = 0;
     for (const key in batteryRoutes) {
       if (!Object.prototype.hasOwnProperty.call(batteryRoutes, key)) {
         console.error("error fetching battery route: " + key);
@@ -1526,7 +1528,7 @@ export class ElecSankey extends LitElement {
       const batt = batteryRoutes[key];
       const widthIn = this._rateToWidth(batt.in.rate);
       const widthOut = this._rateToWidth(batt.out.rate);
-      const curvePadTemp = x1 - x21;
+      curvePadTemp = x1 - x21;
       svgRetArray.push(
         renderFlowByCorners(
           xA,
@@ -1543,13 +1545,7 @@ export class ElecSankey extends LitElement {
       xA -= widthOut;
       if (xA - x15 > 1) {
         svgRetArray.push(
-          renderRect(
-            x15,
-            yA,
-            xA - x15,
-            CONSUMERS_FAN_OUT_VERTICAL_GAP + widthIn + widthOut,
-            "battery"
-          )
+          renderRect(x15, yA, xA - x15, gap + widthIn + widthOut, "battery")
         );
       }
 
@@ -1574,20 +1570,23 @@ export class ElecSankey extends LitElement {
             x17,
             yA,
             xB - x17,
-            CONSUMERS_FAN_OUT_VERTICAL_GAP + widthIn + widthOut,
+            gap + widthIn + widthOut,
             "battery-in",
             battInBlendColor
           )
         );
       }
 
-      yA += CONSUMERS_FAN_OUT_VERTICAL_GAP + widthIn + widthOut;
+      yA += gap + widthIn + widthOut;
     }
 
-    return svg`
+    return [
+      svg`
       ${svgRetArray}
       ${svgRetArray2}
-      `;
+      `,
+      yA - gap + curvePadTemp,
+    ];
   }
 
   protected _gridBlendRatio(): number {
@@ -1861,7 +1860,7 @@ export class ElecSankey extends LitElement {
       y2,
       y11
     );
-    const battInOutBlendSvg = this.renderBatteriesInOutFlow(
+    const [battInOutBlendSvg, y22] = this.renderBatteriesInOutFlow(
       x1,
       x17,
       x14,
@@ -1869,7 +1868,8 @@ export class ElecSankey extends LitElement {
       x20,
       x21,
       y17,
-      y18
+      y18,
+      svgScaleX
     );
 
     const battToConsBlendFlowSvg = this.renderBatteriesToConsumersBlendFlow(
@@ -1883,7 +1883,7 @@ export class ElecSankey extends LitElement {
       y4,
       toConsumersBlendColor
     );
-    const ymax = Math.max(y4, y8);
+    const ymax = Math.max(y4, y8, y22 + 30);
     return html`<div class="card-content">
       <div class="col1 container">
         <div class="col1top padding"></div>
