@@ -10,7 +10,7 @@
       var startTime;
       const HEATER_MAX = 31, HEATER_MIN = 0, HEATER_FREQ = 5/100;
       const GRID_IN_MAX = 59, GRID_IN_MIN = 0, GRID_IN_FREQ = 7/100;
-      const GRID_OUT_MAX = 24, GRID_OUT_MIN = 0, GRID_OUT_FREQ = 13/100;
+      const GRID_OUT_MAX = 24, GRID_OUT_MIN = -5, GRID_OUT_FREQ = 13/100;
       const GEN_MAX = 38, GEN_MIN = 0, GEN_FREQ = 17/100;
       const BATT_IN_MAX = 60, BATT_IN_MIN = 0, BATT_IN_FREQ = 11/100;
       const BATT_OUT_MAX = 50, BATT_OUT_MIN = 0, BATT_OUT_FREQ = 19/100;
@@ -32,6 +32,9 @@
         let battOutRate = (BATT_OUT_MAX+BATT_OUT_MIN)/2 + (BATT_OUT_MAX-BATT_OUT_MIN)/2*Math.sin(2 * Math.PI * BATT_OUT_FREQ * elapsedTime/1000);
         let battInRate = (BATT_IN_MAX+BATT_IN_MIN)/2 + (BATT_IN_MAX-BATT_IN_MIN)/2*Math.sin(2 * Math.PI * BATT_IN_FREQ * elapsedTime/1000);
 
+        if (gridOutRate < 0) {
+          gridOutRate = 0;
+        }
         sankey.gridInRoute = {rate: gridInRate}
         sankey.gridOutRoute = {rate: gridOutRate}
         sankey.generationInRoutes = {
