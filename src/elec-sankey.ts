@@ -710,15 +710,6 @@ export class ElecSankey extends LitElement {
     this._rateToWidthMultplier = TARGET_SCALED_TRUNK_WIDTH / widest_trunk;
   }
 
-  // private _generationToConsumers(): number {
-  //   // @todo if we support batteries in the future, need to modify this.
-  //   const genToGrid = this._gridExport;
-  //   if (genToGrid > 0) {
-  //     return this._generationTotal() - genToGrid;
-  //   }
-  //   return this._generationTotal();
-  // }
-
   private _rateToWidth(rate: number): number {
     const value = rate * this._rateToWidthMultplier;
     return value > 1 ? value : 1;
@@ -1039,25 +1030,23 @@ export class ElecSankey extends LitElement {
   }
 
   protected renderGridInFlow(
-    topRightX: number,
-    topRightY: number,
+    y2: number,
+    y5: number,
+    y13: number,
+    x10: number,
+    y10: number,
     svgScaleX: number = 1
   ): [TemplateResult | symbol, TemplateResult | symbol] {
-    // Needs refactor
     if (!this.gridInRoute) {
       return [nothing, nothing];
     }
-    const in_width = this._gridInFlowWidth();
-    const tot_width = this._gridInFlowWidth() + this._gridOutFlowWidth();
+    const in_width = y13 - y2;
 
-    const startTerminatorX = 0;
-    const startTerminatorY = topRightY;
-
-    const x_width = topRightX;
+    const x_width = x10;
     const rateA = this._gridImport();
     const rateB = this._gridExport;
 
-    const midY = startTerminatorY - this._gridOutFlowWidth() + tot_width / 2;
+    const midY = (y10 + y13) / 2;
     const divHeight = ICON_SIZE_PX + TEXT_PADDING + FONT_SIZE_PX * 2;
     const divRet = html`<div
       width=${ICON_SIZE_PX * 2}
@@ -1078,14 +1067,14 @@ export class ElecSankey extends LitElement {
     <rect
       class="grid"
       id="grid-in-rect"
-      x="${startTerminatorX}"
-      y="${startTerminatorY}"
+      x="${0}"
+      y="${y2}"
       height="${in_width}"
       width="${x_width}"
     />
-    <polygon points="${startTerminatorX},${startTerminatorY}
-    ${startTerminatorX},${startTerminatorY + in_width}
-    ${startTerminatorX + ARROW_HEAD_LENGTH},${startTerminatorY + in_width / 2}"
+    <polygon points="${0},${y2}
+    ${0},${y2 + in_width}
+    ${ARROW_HEAD_LENGTH},${y2 + in_width / 2}"
     class="tint"/>
   `;
     return [divRet, svgRet];
@@ -1165,56 +1154,47 @@ export class ElecSankey extends LitElement {
 
   protected renderGenInBlendFlow(
     y1: number,
+    y2: number,
     endColor: string
   ): TemplateResult | symbol {
-    const width = this._generationToConsumersFlowWidth();
-    if (width === 0) {
+    if (!this._generationToConsumersFlowWidth()) {
       return nothing;
     }
-    return svg`
-      <defs>
-        <linearGradient id="grad_grid" 0="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" style="stop-color:${this._genColor()};stop-opacity:1" />
-          <stop offset="100%" style="stop-color:${endColor};stop-opacity:1" />
-        </linearGradient>
-      </defs>
-      <rect
-        id="gen-in-blend-rect"
-        x=0
-        y="${y1}"
-        height="${width}"
-        width="${CONSUMER_BLEND_LENGTH + 2 * PAD_ANTIALIAS}"
-        fill="url(#grad_grid)"
-      />
-    `;
+    return renderBlendRect(
+      0,
+      y1,
+      0,
+      y2,
+      CONSUMER_BLEND_LENGTH + 1,
+      y1,
+      CONSUMER_BLEND_LENGTH + 1,
+      y2,
+      this._genColor(),
+      endColor,
+      "gen-in-blend-rect"
+    );
   }
 
   protected renderGridInBlendFlow(
     y2: number,
+    y5: number,
     endColor: string
-  ): [TemplateResult, number] {
+  ): TemplateResult | symbol {
     const width = this._gridToConsumersFlowWidth();
 
-    const y5 = y2 + width;
-
-    const svgRet = svg`
-    <defs>
-      <linearGradient id="grad_gen" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" style="stop-color:${this._gridColor()};stop-opacity:1" />
-        <stop offset="100%" style="stop-color:${endColor};stop-opacity:1" />
-      </linearGradient>
-    </defs>
-    <rect
-      id="grid-in-blend-rect"
-      x=0
-      y="${y2}"
-      height="${width}"
-      width="${CONSUMER_BLEND_LENGTH + 1}"
-      fill="url(#grad_gen)"
-      style="fill-opacity:1"
-    />
-  `;
-    return [svgRet, y5];
+    return renderBlendRect(
+      0,
+      y2,
+      0,
+      y5,
+      CONSUMER_BLEND_LENGTH + 1,
+      y2,
+      CONSUMER_BLEND_LENGTH + 1,
+      y5,
+      this._gridColor(),
+      endColor,
+      "grid-in-blend-rect"
+    );
   }
 
   protected renderBatteriesToConsumersBlendFlow(
@@ -1608,6 +1588,7 @@ export class ElecSankey extends LitElement {
     number,
     number,
     number,
+    number,
     number
   ] {
     const widthGenToConsumers = this._generationToConsumersFlowWidth();
@@ -1616,6 +1597,7 @@ export class ElecSankey extends LitElement {
     const widthBatteriesToGrid = this._batteriesToGridFlowWidth();
     const widthGridToBatteries = this._gridToBatteriesFlowWidth();
     const widthBatteriesTConsumers = this._batteryToConsumersFlowWidth();
+    const widthGridToConsumers = this._gridToConsumersFlowWidth();
 
     const mostLeft = Math.min(-widthGenToGrid, -widthGridToBatteries);
     const mostRight =
@@ -1653,14 +1635,15 @@ export class ElecSankey extends LitElement {
     const x2: number = x1;
     const y2: number = y1 + widthGenToConsumers;
 
+    const y5 = y2 + widthGridToConsumers;
     const x10 = ARROW_HEAD_LENGTH;
     const y10 = y2 - this._generationToGridFlowWidth() - widthBatteriesToGrid;
-    return [x0, y0, x1, y1, x2, y2, x10, y10];
+    return [x0, y0, x1, y1, x2, y2, y5, x10, y10];
   }
 
   protected render(): TemplateResult {
     this._recalculate();
-    const [x0, y0, x1, y1, x2, y2, x10, y10] = this._calc_xy();
+    const [x0, y0, x1, y1, x2, y2, y5, x10, y10] = this._calc_xy();
 
     const generationToGridFlowSvg = this.renderGenerationToGridFlow(
       x0,
@@ -1670,8 +1653,9 @@ export class ElecSankey extends LitElement {
     );
     const blendColor = this._rateInBlendColor();
 
-    const genInBlendFlowSvg = this.renderGenInBlendFlow(y1, blendColor);
-    const [gridInBlendFlowSvg, y5] = this.renderGridInBlendFlow(y2, blendColor);
+    const genInBlendFlowSvg = this.renderGenInBlendFlow(y1, y2, blendColor);
+
+    const gridInBlendFlowSvg = this.renderGridInBlendFlow(y2, y5, blendColor);
 
     const y11 = y2 - this._batteriesToGridFlowWidth();
     const y13 = y5 + this._gridToBatteriesFlowWidth();
@@ -1693,8 +1677,11 @@ export class ElecSankey extends LitElement {
     const svgScaleX = svgVisibleWidth / svgCanvasWidth;
 
     const [gridInDiv, gridInFlowSvg] = this.renderGridInFlow(
-      x10,
       y2,
+      y5,
+      y13,
+      x10,
+      y10,
       svgScaleX
     );
     const gridToConsumersFlowSvg = this.renderGridToConsumersFlow(
