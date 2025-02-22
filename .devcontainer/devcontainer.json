@@ -19,7 +19,6 @@
       },
       "extensions": [
         "dbaeumer.vscode-eslint",
-        "ms-vscode.vscode-typescript-tslint-plugin",
         "bierner.lit-html",
         "runem.lit-plugin",
         "esbenp.prettier-vscode",
