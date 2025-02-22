@@ -993,8 +993,10 @@ export class ElecSankey extends LitElement {
     x0: number,
     y0: number,
     x10: number,
-    y10: number
+    y10: number,
+    svgScaleX: number
   ): TemplateResult {
+    const arrow_head_length = ARROW_HEAD_LENGTH / svgScaleX;
     const width = this._generationToGridFlowWidth();
     if (width === 0) {
       return svg``;
@@ -1014,9 +1016,9 @@ export class ElecSankey extends LitElement {
     return svg`
     ${generatedFlowPath}
     ${renderRect(
-      ARROW_HEAD_LENGTH,
+      arrow_head_length,
       y10,
-      x10 - ARROW_HEAD_LENGTH,
+      x10 - arrow_head_length,
       width,
       "generation"
     )}
@@ -1027,9 +1029,11 @@ export class ElecSankey extends LitElement {
     x10: number,
     y10: number,
     y2: number,
+    svgScaleX: number,
     color: string
   ): TemplateResult | symbol {
     const width = this._gridOutFlowWidth();
+    const arrow_head_length = ARROW_HEAD_LENGTH / svgScaleX;
     if (width === 0) {
       return nothing;
     }
@@ -1037,8 +1041,8 @@ export class ElecSankey extends LitElement {
     <polygon
       class="grid"
       points="${x10},${y10}
-      ${x10},${y10 + width}
-      ${x10 - ARROW_HEAD_LENGTH},${(y10 + y2) / 2}"
+      ${x10},${y2}
+      ${x10 - arrow_head_length},${(y10 + y2) / 2}"
       {color ? style="fill:${color};fill-opacity:1" : ""}
     />
   `;
@@ -1076,9 +1080,9 @@ export class ElecSankey extends LitElement {
     if (!this.gridInRoute) {
       return [nothing, nothing];
     }
+    const arrow_head_length = ARROW_HEAD_LENGTH / svgScaleX;
     const in_width = y13 - y2;
 
-    const x_width = x10;
     const rateA = this._gridImport();
     const rateB = this._gridExport;
 
@@ -1106,11 +1110,11 @@ export class ElecSankey extends LitElement {
       x="${0}"
       y="${y2}"
       height="${in_width}"
-      width="${x_width}"
+      width="${arrow_head_length}"
     />
     <polygon points="${0},${y2}
     ${0},${y2 + in_width}
-    ${ARROW_HEAD_LENGTH},${y2 + in_width / 2}"
+    ${arrow_head_length},${y2 + in_width / 2}"
     class="tint"/>
   `;
     return [divRet, svgRet];
@@ -1670,7 +1674,6 @@ export class ElecSankey extends LitElement {
     number,
     number,
     number,
-    number,
     string,
     string,
     string
@@ -1720,7 +1723,6 @@ export class ElecSankey extends LitElement {
     const y2: number = y1 + widthGenToConsumers;
 
     const y5 = y2 + widthGridToConsumers;
-    const x10 = ARROW_HEAD_LENGTH;
     const y10 = y2 - this._generationToGridFlowWidth() - widthBatteriesToGrid;
 
     const gridOutBlendColor = this._gridOutBlendColor(
@@ -1744,7 +1746,6 @@ export class ElecSankey extends LitElement {
       x2,
       y2,
       y5,
-      x10,
       y10,
       gridOutBlendColor,
       toConsumersBlendColor,
@@ -1762,23 +1763,29 @@ export class ElecSankey extends LitElement {
       x2,
       y2,
       y5,
-      x10,
       y10,
       gridOutBlendColor,
       toConsumersBlendColor,
-      toBatteriesBlendColor,
+      toBatteriesBlendColor, // TODO refactor this
     ] = this._calc_xy();
+
+    const svgCanvasWidth = x1;
+    const svgVisibleWidth = SVG_LHS_VISIBLE_WIDTH;
+    const svgScaleX = svgVisibleWidth / svgCanvasWidth;
+    const x10 = ARROW_HEAD_LENGTH / svgScaleX;
 
     const generationToGridFlowSvg = this.renderGenerationToGridFlow(
       x0,
       y0,
       x10,
-      y10
+      y10,
+      svgScaleX
     );
     const gridOutArrowSvg = this.renderGridOutFlowArrow(
       x10,
       y10,
       y2,
+      svgScaleX,
       gridOutBlendColor
     );
 
@@ -1808,10 +1815,6 @@ export class ElecSankey extends LitElement {
 
     const y4 = y5 + this._batteryToConsumersFlowWidth();
     const y18 = y17 + BATTERY_BLEND_LENGTH;
-
-    const svgCanvasWidth = x1;
-    const svgVisibleWidth = SVG_LHS_VISIBLE_WIDTH;
-    const svgScaleX = svgVisibleWidth / svgCanvasWidth;
 
     const [gridInDiv, gridInFlowSvg] = this.renderGridInFlow(
       y2,
