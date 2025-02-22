@@ -110,7 +110,29 @@ export function mixHexes(hex1: string, hex2: string, ratio: number = 0.5) {
   const b = Math.round(b1 * ratio + b2 * (1 - ratio));
   return rgb2hex(r, g, b);
 }
-// End of color mixing code.
+// End of color mixing code from SO.
+
+export function mix3Hexes(
+  hex1: string,
+  hex2: string,
+  hex3: string,
+  ratio1: number,
+  ratio2: number,
+  ratio3: number
+) {
+  [ratio1, ratio2, ratio3].forEach((ratio) => {
+    if (ratio > 1.0 || ratio < 0) {
+      throw new Error("Invalid ratio: " + ratio);
+    }
+  });
+  const [r1, g1, b1] = hex2dec(hex1);
+  const [r2, g2, b2] = hex2dec(hex2);
+  const [r3, g3, b3] = hex2dec(hex3);
+  const r = Math.round(r1 * ratio1 + r2 * ratio2 + r3 * ratio3);
+  const g = Math.round(g1 * ratio1 + g2 * ratio2 + g3 * ratio3);
+  const b = Math.round(b1 * ratio1 + b2 * ratio2 + b3 * ratio3);
+  return rgb2hex(r, g, b);
+}
 
 /**
  * Calculates the intersection point of two lines defined by their endpoints.
@@ -992,19 +1014,34 @@ export class ElecSankey extends LitElement {
 
     return svg`
     ${generatedFlowPath}
-    <rect
-      class="generation"
-      x=${ARROW_HEAD_LENGTH}
-      y="${y10}"
-      height="${width}"
-      width="${x10 - ARROW_HEAD_LENGTH}"
-    />
+    ${renderRect(
+      ARROW_HEAD_LENGTH,
+      y10,
+      x10 - ARROW_HEAD_LENGTH,
+      width,
+      "generation"
+    )}
+  `;
+  }
+
+  protected renderGridOutFlowArrow(
+    x10: number,
+    y10: number,
+    y2: number,
+    color: string
+  ): TemplateResult | symbol {
+    const width = this._gridOutFlowWidth();
+    if (width === 0) {
+      return nothing;
+    }
+    return svg`
     <polygon
-      class="generation"
-      points="${ARROW_HEAD_LENGTH},${y10}
-      ${ARROW_HEAD_LENGTH},${y10 + width}
-      0,${y10 + width / 2}"
-      />
+      class="grid"
+      points="${x10},${y10}
+      ${x10},${y10 + width}
+      ${x10 - ARROW_HEAD_LENGTH},${(y10 + y2) / 2}"
+      {color ? style="fill:${color};fill-opacity:1" : ""}
+    />
   `;
   }
 
@@ -1572,11 +1609,41 @@ export class ElecSankey extends LitElement {
     return ratio;
   }
 
-  protected _rateInBlendColor(): string {
+  protected _toConsumersBlendColor(
+    genToConsFlow: number,
+    gridToConsFlow: number,
+    battToConsFlow: number
+  ): string {
+    const total = genToConsFlow + gridToConsFlow + battToConsFlow;
+    return mix3Hexes(
+      this._genColor(),
+      this._gridColor(),
+      this._battColor(),
+      genToConsFlow / total,
+      gridToConsFlow / total,
+      battToConsFlow / total
+    );
+  }
+
+  protected _gridOutBlendColor(
+    genToGridFlow: number,
+    battToGridFlow: number
+  ): string {
+    return mixHexes(
+      this._genColor(),
+      this._battColor(),
+      genToGridFlow / (genToGridFlow + battToGridFlow)
+    );
+  }
+
+  protected _toBatteriesBlendColor(
+    gridToBattFlow: number,
+    genToBattFlow: number
+  ): string {
     return mixHexes(
       this._gridColor(),
-      this._genColor(),
-      this._gridBlendRatio()
+      this._battColor(),
+      gridToBattFlow / (gridToBattFlow + genToBattFlow)
     );
   }
 
@@ -1589,14 +1656,17 @@ export class ElecSankey extends LitElement {
     number,
     number,
     number,
-    number
+    number,
+    string,
+    string,
+    string
   ] {
     const widthGenToConsumers = this._generationToConsumersFlowWidth();
     const widthGenToGrid = this._generationToGridFlowWidth();
     const widthGenToBatteries = this._generationToBatteryFlowWidth();
     const widthBatteriesToGrid = this._batteriesToGridFlowWidth();
     const widthGridToBatteries = this._gridToBatteriesFlowWidth();
-    const widthBatteriesTConsumers = this._batteryToConsumersFlowWidth();
+    const widthBatteriesToConsumers = this._batteryToConsumersFlowWidth();
     const widthGridToConsumers = this._gridToConsumersFlowWidth();
 
     const mostLeft = Math.min(-widthGenToGrid, -widthGridToBatteries);
@@ -1604,7 +1674,7 @@ export class ElecSankey extends LitElement {
       widthGenToBatteries +
       Math.max(
         widthGenToConsumers,
-        widthBatteriesToGrid + widthBatteriesTConsumers
+        widthBatteriesToGrid + widthBatteriesToConsumers
       );
     const width = mostRight - mostLeft;
     const padX =
@@ -1612,7 +1682,7 @@ export class ElecSankey extends LitElement {
         widthGenToGrid,
         widthGenToConsumers,
         widthGridToBatteries,
-        widthBatteriesTConsumers
+        widthBatteriesToConsumers
       ) * PAD_MULTIPLIER;
     const midX = ARROW_HEAD_LENGTH + width / 2 + padX;
 
@@ -1638,12 +1708,52 @@ export class ElecSankey extends LitElement {
     const y5 = y2 + widthGridToConsumers;
     const x10 = ARROW_HEAD_LENGTH;
     const y10 = y2 - this._generationToGridFlowWidth() - widthBatteriesToGrid;
-    return [x0, y0, x1, y1, x2, y2, y5, x10, y10];
+
+    const gridOutBlendColor = this._gridOutBlendColor(
+      widthGenToGrid,
+      widthBatteriesToGrid
+    );
+    const toConsumersBlendColor = this._toConsumersBlendColor(
+      widthGenToConsumers,
+      widthGridToConsumers,
+      widthBatteriesToConsumers
+    );
+    const toBatteriesBlendColor = this._toBatteriesBlendColor(
+      widthGridToBatteries,
+      widthGenToBatteries
+    );
+    return [
+      x0,
+      y0,
+      x1,
+      y1,
+      x2,
+      y2,
+      y5,
+      x10,
+      y10,
+      gridOutBlendColor,
+      toConsumersBlendColor,
+      toBatteriesBlendColor,
+    ];
   }
 
   protected render(): TemplateResult {
     this._recalculate();
-    const [x0, y0, x1, y1, x2, y2, y5, x10, y10] = this._calc_xy();
+    const [
+      x0,
+      y0,
+      x1,
+      y1,
+      x2,
+      y2,
+      y5,
+      x10,
+      y10,
+      gridOutBlendColor,
+      toConsumersBlendColor,
+      toBatteriesBlendColor,
+    ] = this._calc_xy();
 
     const generationToGridFlowSvg = this.renderGenerationToGridFlow(
       x0,
@@ -1651,11 +1761,24 @@ export class ElecSankey extends LitElement {
       x10,
       y10
     );
-    const blendColor = this._rateInBlendColor();
+    const gridOutArrowSvg = this.renderGridOutFlowArrow(
+      x10,
+      y10,
+      y2,
+      gridOutBlendColor
+    );
 
-    const genInBlendFlowSvg = this.renderGenInBlendFlow(y1, y2, blendColor);
+    const genInBlendFlowSvg = this.renderGenInBlendFlow(
+      y1,
+      y2,
+      toConsumersBlendColor
+    );
 
-    const gridInBlendFlowSvg = this.renderGridInBlendFlow(y2, y5, blendColor);
+    const gridInBlendFlowSvg = this.renderGridInBlendFlow(
+      y2,
+      y5,
+      toConsumersBlendColor
+    );
 
     const y11 = y2 - this._batteriesToGridFlowWidth();
     const y13 = y5 + this._gridToBatteriesFlowWidth();
@@ -1711,7 +1834,7 @@ export class ElecSankey extends LitElement {
     const [consOutFlowsDiv, consOutFlowsSvg, y8] = this._renderConsumerFlows(
       y1,
       y5,
-      blendColor,
+      toConsumersBlendColor,
       svgScaleX
     );
     const gridToBattFlowSvg = this.renderGridToBatteriesFlow(
@@ -1752,13 +1875,13 @@ export class ElecSankey extends LitElement {
     const battToConsBlendFlowSvg = this.renderBatteriesToConsumersBlendFlow(
       y5,
       y4,
-      blendColor
+      toConsumersBlendColor
     );
 
     const blendedFlowPreFanOut = this._renderBlendedFlowPreFanOut(
       y1,
       y4,
-      blendColor
+      toConsumersBlendColor
     );
     const ymax = Math.max(y4, y8);
     return html`<div class="card-content">
@@ -1777,10 +1900,10 @@ export class ElecSankey extends LitElement {
               height=${ymax * svgScaleX}
               preserveAspectRatio="none"
             >
-              ${genInFlowSvg} ${generationToGridFlowSvg} ${genToBattFlowSvg}
-              ${gridToBattFlowSvg} ${gridInFlowSvg} ${gridToConsumersFlowSvg}
-              ${consOutFlowsDiv} ${battToConsFlowSvg} ${battToGridFlowSvg}
-              ${battInOutBlendSvg}
+              ${genInFlowSvg} ${generationToGridFlowSvg} ${gridOutArrowSvg}
+              ${genToBattFlowSvg} ${gridToBattFlowSvg} ${gridInFlowSvg}
+              ${gridToConsumersFlowSvg} ${consOutFlowsDiv} ${battToConsFlowSvg}
+              ${battToGridFlowSvg} ${battInOutBlendSvg}
             </svg>
           </div>
           <div class="sankey-mid">

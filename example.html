@@ -12,7 +12,8 @@
       const GRID_IN_MAX = 59, GRID_IN_MIN = 0, GRID_IN_FREQ = 7/100;
       const GRID_OUT_MAX = 24, GRID_OUT_MIN = 0, GRID_OUT_FREQ = 13/100;
       const GEN_MAX = 38, GEN_MIN = 0, GEN_FREQ = 17/100;
-
+      const BATT_IN_MAX = 60, BATT_IN_MIN = 0, BATT_IN_FREQ = 11/100;
+      const BATT_OUT_MAX = 50, BATT_OUT_MIN = 0, BATT_OUT_FREQ = 19/100;
 
       function init(){
         startTime = (new Date()).getTime();
@@ -28,6 +29,8 @@
         let gridInRate = (GRID_IN_MAX+GRID_IN_MIN)/2 + (GRID_IN_MAX-GRID_IN_MIN)/2*Math.sin(2 * Math.PI * GRID_IN_FREQ * elapsedTime/1000);
         let gridOutRate = (GRID_OUT_MAX+GRID_OUT_MIN)/2 + (GRID_OUT_MAX-GRID_OUT_MIN)/2*Math.sin(2 * Math.PI * GRID_OUT_FREQ * elapsedTime/1000);
         let genRate = (GEN_MAX+GEN_MIN)/2 + (GEN_MAX-GEN_MIN)/2*Math.sin(2 * Math.PI * GEN_FREQ * elapsedTime/1000);
+        let battOutRate = (BATT_OUT_MAX+BATT_OUT_MIN)/2 + (BATT_OUT_MAX-BATT_OUT_MIN)/2*Math.sin(2 * Math.PI * BATT_OUT_FREQ * elapsedTime/1000);
+        let battInRate = (BATT_IN_MAX+BATT_IN_MIN)/2 + (BATT_IN_MAX-BATT_IN_MIN)/2*Math.sin(2 * Math.PI * BATT_IN_FREQ * elapsedTime/1000);
 
         sankey.gridInRoute = {rate: gridInRate}
         sankey.gridOutRoute = {rate: gridOutRate}
@@ -41,8 +44,8 @@
         }
         sankey.batteryRoutes = {
           batt1: {
-            in: { rate: 6, text: "Battery in" },
-            out: { rate: 9, text: "Battery out" },
+            in: { rate: battInRate, text: "Battery in" },
+            out: { rate: battOutRate, text: "Battery out" },
           },
           batt2: {
             in: { rate: 10, text: "Battery in" },
