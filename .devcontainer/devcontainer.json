@@ -15,11 +15,10 @@
         "[typescript]": {
           "editor.defaultFormatter": "esbenp.prettier-vscode"
         },
-        "files.trimTrailingWhitespace": true,
+        "files.trimTrailingWhitespace": true
       },
       "extensions": [
         "dbaeumer.vscode-eslint",
-        "ms-vscode.vscode-typescript-tslint-plugin",
         "bierner.lit-html",
         "runem.lit-plugin",
         "esbenp.prettier-vscode",
