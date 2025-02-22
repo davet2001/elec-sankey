@@ -1547,7 +1547,7 @@ export class ElecSankey extends LitElement {
             x15,
             yA,
             xA - x15,
-            CONSUMERS_FAN_OUT_VERTICAL_GAP,
+            CONSUMERS_FAN_OUT_VERTICAL_GAP + widthIn + widthOut,
             "battery"
           )
         );
@@ -1574,14 +1574,14 @@ export class ElecSankey extends LitElement {
             x17,
             yA,
             xB - x17,
-            CONSUMERS_FAN_OUT_VERTICAL_GAP,
+            CONSUMERS_FAN_OUT_VERTICAL_GAP + widthIn + widthOut,
             "battery-in",
             battInBlendColor
           )
         );
       }
 
-      yA += CONSUMERS_FAN_OUT_VERTICAL_GAP;
+      yA += CONSUMERS_FAN_OUT_VERTICAL_GAP + widthIn + widthOut;
     }
 
     return svg`
