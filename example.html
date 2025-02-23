@@ -21,7 +21,7 @@
       };
       window.onload = init
       var intervalId = setInterval(function() {
-        if (!document.querySelector('.messageCheckbox').checked) {
+        if (!document.querySelector('.animateCheckbox').checked) {
           return;
         }
         const elapsedTime = (new Date()).getTime() - startTime;
@@ -45,19 +45,24 @@
           consumer2: {text: 'Dishwasher', rate: 7},
           consumer3: {text: "Lamp", rate: 2},
         }
-        sankey.batteryRoutes = {
-          batt1: {
-            in: { rate: battInRate, text: "BatteryA in" },
-            out: { rate: battOutRate, text: "BatteryA out" },
-          },
-          batt2: {
-            in: { rate: 10, text: "BatteryB in" },
-            out: { rate: 3, text: "BatteryB out" },
-          },
-          batt3: {
-            in: { rate: 10, text: "BatteryC in" },
-            out: { rate: 3, text: "BatteryC out" },
+        if (document.querySelector('.batteryCheckbox').checked) {
+          sankey.batteryRoutes = {
+            batt1: {
+              in: { rate: battInRate, text: "BatteryA in" },
+              out: { rate: battOutRate, text: "BatteryA out" },
+            },
+            batt2: {
+              in: { rate: 10, text: "BatteryB in" },
+              out: { rate: 3, text: "BatteryB out" },
+            },
+            batt3: {
+              in: { rate: 10, text: "BatteryC in" },
+              out: { rate: 3, text: "BatteryC out" },
+            }
           }
+        }
+        else {
+          sankey.batteryRoutes = {}
         }
       }, 50)
     </script>
@@ -69,7 +74,8 @@
   </head>
   <body style="margin-left: 24px">
     <h2>Example</h2>
-    <p>Animate:<input class="messageCheckbox" type="checkbox" value="1" name="animate" checked></p>
+    <p>Animate:<input class="animateCheckbox" type="checkbox" value="1" name="animate" checked></p>
+    <p>Batteries:<input class="batteryCheckbox" type="checkbox" value="1" name="batteries" checked></p>
     <elec-sankey id="example1"
       unit="kWh"
     ></elec-sankey>
