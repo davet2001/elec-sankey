@@ -2001,10 +2001,6 @@ export class ElecSankey extends LitElement {
               ${battToGridBlendFlowSvg} ${gridInFlowSvg}
               ${gridToConsumersFlowSvg} ${battToConsFlowSvg}
               ${battToGridFlowSvg} ${battInOutBlendSvg}
-              ${debugPoint(x21, y18, "x21,y18")}
-              ${debugPoint(x1 - 20, y22, "x1,y22")}
-              ${debugPoint(x1 - 20, ymax, "x1,ymax")}
-              ${debugPoint(x1 - 20, y8, "x1,y8")}
             </svg>
           </div>
           <div class="sankey-mid">
