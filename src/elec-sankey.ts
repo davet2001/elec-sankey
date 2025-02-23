@@ -8,7 +8,11 @@ import {
   svg,
 } from "lit";
 
-import { mdiTransmissionTower, mdiHelpRhombus } from "@mdi/js";
+import {
+  mdiTransmissionTower,
+  mdiHelpRhombus,
+  mdiBatteryCharging,
+} from "@mdi/js";
 import { customElement, property } from "lit/decorators.js";
 
 /**
@@ -1363,8 +1367,8 @@ export class ElecSankey extends LitElement {
     const divRet = html`<div
       class="label elecroute-label-consumer"
       style="height:${divHeight}px;
-      top: ${yEnd - (count * divHeight) / 2}px; margin: ${-divHeight /
-      2}px 0 0 0;"
+      top: ${yEnd * svgScaleX -
+      (count * divHeight) / 2}px; margin: ${-divHeight / 2}px 0 0 0;"
     >
       ${this._generateLabelDiv(
         consumer.id,
@@ -1488,12 +1492,7 @@ export class ElecSankey extends LitElement {
     );
     divRetArray.push(divRow);
     svgRetArray.push(svgRow);
-    yRight += gap;
-
-    if (svgRetArray.length > 0) {
-      yRight += gap;
-    }
-    return [divRetArray, svgRetArray, yRight];
+    return [divRetArray, svgRetArray, yRight + CONSUMER_LABEL_HEIGHT / 2];
   }
 
   protected renderBatteriesInOutFlow(
@@ -1506,13 +1505,14 @@ export class ElecSankey extends LitElement {
     y17: number,
     y18: number,
     svgScaleX
-  ): [TemplateResult | symbol, number] {
+  ): [Array<TemplateResult | symbol>, TemplateResult | symbol, number] {
     // Bottom layer
     const svgRetArray: Array<TemplateResult | symbol> = [];
     // Top layer
     const svgRetArray2: Array<TemplateResult | symbol> = [];
-
-    const gap = CONSUMERS_FAN_OUT_VERTICAL_GAP / svgScaleX; // @todo if batteries aren't present, skip.
+    const divRetArray: Array<TemplateResult | symbol> = [];
+    // @todo if batteries aren't present, skip.
+    const gap = CONSUMERS_FAN_OUT_VERTICAL_GAP / svgScaleX;
     const arrow_head_length = ARROW_HEAD_LENGTH / svgScaleX;
     // if (false * 1) {
     //   return nothing;
@@ -1555,11 +1555,13 @@ export class ElecSankey extends LitElement {
     svgRetArray.push(renderRect(x15, y17, x21 - x15, y18 - y17, "battery"));
 
     const batteryRoutes: { [id: string]: ElecRoutePair } = this.batteryRoutes;
+    const divHeight = ICON_SIZE_PX + TEXT_PADDING + FONT_SIZE_PX * 2;
 
     let xA: number = x21;
     let yA: number = y18;
 
     let xB: number = x15;
+    let count = 0;
 
     let curvePadTemp = 0;
     for (const key in batteryRoutes) {
@@ -1635,15 +1637,36 @@ export class ElecSankey extends LitElement {
         );
       }
 
+      divRetArray.push(
+        html`<div
+          class="label elecroute-label-battery"
+          style="height:${divHeight}px;
+            top: ${
+              (yA + curvePadTemp + (widthIn + widthOut) / 2) * svgScaleX -
+              (count * divHeight) / 2
+            }px; margin: ${-divHeight / 2}px 0 0 0;"
+        >
+            ${this._generateLabelDiv(
+              batt.in.id,
+              mdiBatteryCharging,
+              batt.in.text,
+              batt.in.rate
+            )}
+          </div>
+        </div>`
+      );
+      count += 1;
+
       yA += gap + widthIn + widthOut;
     }
 
     return [
+      divRetArray,
       svg`
       ${svgRetArray}
       ${svgRetArray2}
       `,
-      yA - gap + curvePadTemp,
+      yA - gap + curvePadTemp + divHeight / 2,
     ];
   }
 
@@ -1932,17 +1955,18 @@ export class ElecSankey extends LitElement {
       y2,
       gridOutBlendColor
     );
-    const [battInOutBlendSvg, y22] = this.renderBatteriesInOutFlow(
-      x1,
-      x17,
-      x14,
-      x15,
-      x20,
-      x21,
-      y17,
-      y18,
-      svgScaleX
-    );
+    const [batteriesFlowInOutDiv, battInOutBlendSvg, y22] =
+      this.renderBatteriesInOutFlow(
+        x1,
+        x17,
+        x14,
+        x15,
+        x20,
+        x21,
+        y17,
+        y18,
+        svgScaleX
+      );
 
     const battToConsBlendFlowSvg = this.renderBatteriesToConsumersBlendFlow(
       y5,
@@ -1975,20 +1999,29 @@ export class ElecSankey extends LitElement {
               ${genInFlowSvg} ${generationToGridFlowSvg} ${genToGridBlendSvg}
               ${gridOutArrowSvg} ${genToBattFlowSvg} ${gridToBattFlowSvg}
               ${battToGridBlendFlowSvg} ${gridInFlowSvg}
-              ${gridToConsumersFlowSvg} ${consOutFlowsDiv} ${battToConsFlowSvg}
+              ${gridToConsumersFlowSvg} ${battToConsFlowSvg}
               ${battToGridFlowSvg} ${battInOutBlendSvg}
+              ${debugPoint(x21, y18, "x21,y18")}
+              ${debugPoint(x1 - 20, y22, "x1,y22")}
+              ${debugPoint(x1 - 20, ymax, "x1,ymax")}
+              ${debugPoint(x1 - 20, y8, "x1,y8")}
             </svg>
           </div>
           <div class="sankey-mid">
-            <svg
-              viewBox="0 0 100 ${ymax}"
-              width="100%"
-              height=${ymax * svgScaleX}
-              preserveAspectRatio="none"
-            >
-              ${genInBlendFlowSvg} ${gridInBlendFlowSvg}
-              ${battToConsBlendFlowSvg} ${blendedFlowPreFanOut}
-            </svg>
+            <div class="layer-wrapper">
+              <div class="sankey-mid-svg" width="100%">
+                <svg
+                  viewBox="0 0 100 ${ymax}"
+                  width="100%"
+                  height=${ymax * svgScaleX}
+                  preserveAspectRatio="none"
+                >
+                  ${genInBlendFlowSvg} ${gridInBlendFlowSvg}
+                  ${battToConsBlendFlowSvg} ${blendedFlowPreFanOut}
+                </svg>
+              </div>
+              <div class="sankey-mid-labels">${batteriesFlowInOutDiv}</div>
+            </div>
           </div>
           <div class="sankey-right">
             <svg
@@ -2004,6 +2037,7 @@ export class ElecSankey extends LitElement {
       </div>
       <div class="col3 container">
         <div class="col3top padding"></div>
+        ${consOutFlowsDiv}
       </div>
     </div>`;
   }
@@ -2043,6 +2077,22 @@ export class ElecSankey extends LitElement {
       flex: 1;
       flex-grow: 1;
       min-width: 20px;
+      position: relative;
+    }
+    .layer-wrapper {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    .sankey-mid-labels {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+    }
+    .sankey-mid-svg {
+      width: 100%;
+      height: 100%;
+      position: absolute;
     }
     .sankey-right {
       flex: 1;
@@ -2060,10 +2110,15 @@ export class ElecSankey extends LitElement {
     .label {
       flex: 1;
       position: relative;
+      font-size: 10px;
     }
     .elecroute-label-grid {
       display: flex;
       text-align: center;
+    }
+    .elecroute-label-battery {
+      display: flex;
+      padding-left: 6px;
     }
     .elecroute-label-horiz {
       display: flex;
