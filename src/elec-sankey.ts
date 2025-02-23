@@ -1170,7 +1170,7 @@ export class ElecSankey extends LitElement {
     y2: number,
     y11: number
   ): TemplateResult | symbol {
-    if (this._gridToBatteriesFlowWidth() === 0) {
+    if (this._batteriesToGridFlowWidth() === 0) {
       return nothing;
     }
     return renderFlowByCorners(
