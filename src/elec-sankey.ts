@@ -1761,12 +1761,14 @@ export class ElecSankey extends LitElement {
         widthGenToGrid,
         widthGenToConsumers,
         widthGridToBatteries,
-        widthBatteriesToConsumers
+        widthBatteriesToConsumers,
+        30
       ) * PAD_MULTIPLIER;
-    const midX = ARROW_HEAD_LENGTH + width / 2 + padX;
+    const midX = ARROW_HEAD_LENGTH + GRID_BLEND_LENGTH + width / 2 + padX;
 
     const x0 =
-      ARROW_HEAD_LENGTH + widthGenToGrid > widthGridToBatteries
+      ARROW_HEAD_LENGTH + GRID_BLEND_LENGTH + widthGenToGrid >
+      widthGridToBatteries
         ? midX - width / 2
         : midX - width / 2 + widthGridToBatteries - widthGenToGrid;
     const y0 = TERMINATOR_BLOCK_LENGTH;
