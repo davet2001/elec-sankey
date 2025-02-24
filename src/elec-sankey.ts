@@ -766,12 +766,10 @@ export class ElecSankey extends LitElement {
   }
 
   private _gridOutFlowWidth(): number {
-    if (this.gridOutRoute === undefined) {
+    if (this.gridOutRoute === undefined || this.gridOutRoute.rate <= 0) {
       return 0;
     }
-    if (this.gridOutRoute.rate > 0) {
-      return this._rateToWidth(this.gridOutRoute.rate);
-    }
+    return this._rateToWidth(this.gridOutRoute.rate);
   }
 
   private _gridToConsumersFlowWidth(): number {
@@ -879,7 +877,6 @@ export class ElecSankey extends LitElement {
     x16: number,
     x1: number,
     y1: number,
-    x2: number,
     y2: number,
     svgScaleX: number = 1
   ): [TemplateResult[] | symbol[], TemplateResult | symbol] {
@@ -1065,9 +1062,7 @@ export class ElecSankey extends LitElement {
 
   protected renderGridInFlow(
     y2: number,
-    y5: number,
     y13: number,
-    x10: number,
     y10: number,
     svgScaleX: number = 1
   ): [TemplateResult | symbol, TemplateResult | symbol] {
@@ -1500,7 +1495,6 @@ export class ElecSankey extends LitElement {
     x17: number,
     x14: number,
     x15: number,
-    x20: number,
     x21: number,
     y17: number,
     y18: number,
@@ -1735,7 +1729,6 @@ export class ElecSankey extends LitElement {
     number,
     number,
     number,
-    number,
     string,
     string,
     string
@@ -1783,7 +1776,6 @@ export class ElecSankey extends LitElement {
       );
     const x1: number = midX + width / 2 + padX;
 
-    const x2: number = x1;
     const y2: number = y1 + widthGenToConsumers;
 
     const y5 = y2 + widthGridToConsumers;
@@ -1807,7 +1799,6 @@ export class ElecSankey extends LitElement {
       y0,
       x1,
       y1,
-      x2,
       y2,
       y5,
       y10,
@@ -1824,7 +1815,6 @@ export class ElecSankey extends LitElement {
       y0,
       x1,
       y1,
-      x2,
       y2,
       y5,
       y10,
@@ -1890,10 +1880,8 @@ export class ElecSankey extends LitElement {
     );
     const [gridInDiv, gridInFlowSvg] = this.renderGridInFlow(
       y2,
-      y5,
       y13,
       x10,
-      y10,
       svgScaleX
     );
     const gridToConsumersFlowSvg = this.renderGridToConsumersFlow(
@@ -1916,7 +1904,6 @@ export class ElecSankey extends LitElement {
       x16,
       x1,
       y1,
-      x2, //@todo this is redundant and can be replaced with x1
       y2,
       svgScaleX
     );
@@ -1963,7 +1950,6 @@ export class ElecSankey extends LitElement {
         x17,
         x14,
         x15,
-        x20,
         x21,
         y17,
         y18,
