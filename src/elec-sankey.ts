@@ -1570,60 +1570,65 @@ export class ElecSankey extends LitElement {
         continue;
       }
       const batt = batteryRoutes[key];
-      const widthOut = this._rateToWidth(batt.out.rate);
-      const widthIn = this._rateToWidth(batt.in.rate);
+      const widthOut = batt.out.rate > 0 ? this._rateToWidth(batt.out.rate) : 0;
+      const widthIn = batt.in.rate > 0 ? this._rateToWidth(batt.in.rate) : 0;
       curvePadTemp = x1 - x21;
-      svgRetArray.push(
-        renderFlowByCorners(
-          xA,
-          yA,
-          xA - widthIn,
-          yA,
-          x1,
-          yA + curvePadTemp,
-          x1,
-          yA + curvePadTemp + widthIn,
-          "battery"
-        )
-      );
-      svgRetArray.push(
-        svg`
-        <polygon points="${x1},${yA + curvePadTemp}
-        ${x1 - arrow_head_length},${yA + curvePadTemp + widthIn / 2},
-        ${x1},${yA + curvePadTemp + widthIn}"
-        class="tint"/>`
-      );
-      xA -= widthIn;
+      if (widthIn > 0) {
+        svgRetArray.push(
+          renderFlowByCorners(
+            xA,
+            yA,
+            xA - widthIn,
+            yA,
+            x1,
+            yA + curvePadTemp,
+            x1,
+            yA + curvePadTemp + widthIn,
+            "battery"
+          )
+        );
+        svgRetArray.push(
+          svg`
+          <polygon points="${x1},${yA + curvePadTemp}
+          ${x1 - arrow_head_length},${yA + curvePadTemp + widthIn / 2},
+          ${x1},${yA + curvePadTemp + widthIn}"
+          class="tint"/>`
+        );
+        xA -= widthIn;
+      } else {
+        console.log("Skipping battery in route: " + widthIn);
+      }
       if (xA - x15 > 1) {
         svgRetArray.push(
           renderRect(x15, yA, xA - x15, gap + widthOut + widthIn, "battery")
         );
       }
-
-      svgRetArray2.push(
-        renderFlowByCorners(
-          xB,
-          yA,
-          xB - widthOut,
-          yA,
-          x1 - arrow_head_length,
-          yA + curvePadTemp + widthIn,
-          x1 - arrow_head_length,
-          yA + curvePadTemp + widthIn + widthOut,
-          "battery",
-          battInBlendColor
-        )
-      );
-      svgRetArray.push(
-        svg`
-        <polygon points="${x1 - arrow_head_length},${
-          yA + curvePadTemp + widthIn
-        }
-        ${x1},${yA + curvePadTemp + widthIn + widthOut / 2},
-        ${x1 - arrow_head_length},${yA + curvePadTemp + widthIn + widthOut}"
-        style="fill:${battInBlendColor}" />`
-      );
-      xB -= widthOut;
+      if (widthOut > 0) {
+        svgRetArray2.push(
+          renderFlowByCorners(
+            xB,
+            yA,
+            xB - widthOut,
+            yA,
+            x1 - arrow_head_length,
+            yA + curvePadTemp + widthIn,
+            x1 - arrow_head_length,
+            yA + curvePadTemp + widthIn + widthOut,
+            "battery",
+            battInBlendColor
+          )
+        );
+        svgRetArray.push(
+          svg`
+          <polygon points="${x1 - arrow_head_length},${
+            yA + curvePadTemp + widthIn
+          }
+          ${x1},${yA + curvePadTemp + widthIn + widthOut / 2},
+          ${x1 - arrow_head_length},${yA + curvePadTemp + widthIn + widthOut}"
+          style="fill:${battInBlendColor}" />`
+        );
+        xB -= widthOut;
+      }
       if (xB - x17 > 1) {
         svgRetArray.push(
           renderRect(
