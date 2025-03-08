@@ -15,9 +15,25 @@
       const BATT_IN_MAX = 60, BATT_IN_MIN = -10, BATT_IN_FREQ = 11/100;
       const BATT_OUT_MAX = 50, BATT_OUT_MIN = -10, BATT_OUT_FREQ = 19/100;
 
+      var rates = {
+        heaterRate: 0,
+        gridInRate: 0,
+        gridOutRate: 0,
+        genRate: 0,
+        battOutRate: 0,
+        battInRate: 0
+      };
+
       function init(){
         startTime = (new Date()).getTime();
-        sankey = document.getElementById('example1')
+        // Read initial values from input boxes if they have any text
+        rates.heaterRate = parseFloat(document.getElementById('heaterRate').value) || 0;
+        rates.gridInRate = parseFloat(document.getElementById('gridInRate').value) || 0;
+        rates.gridOutRate = parseFloat(document.getElementById('gridOutRate').value) || 0;
+        rates.genRate = parseFloat(document.getElementById('genRate').value) || 0;
+        rates.battOutRate = parseFloat(document.getElementById('battOutRate').value) || 0;
+        rates.battInRate = parseFloat(document.getElementById('battInRate').value) || 0;
+        redrawSankey();
       };
       window.onload = init
       var intervalId = setInterval(function() {
@@ -25,37 +41,42 @@
           return;
         }
         const elapsedTime = (new Date()).getTime() - startTime;
-        let heaterRate = (HEATER_MAX+HEATER_MIN)/2 + (HEATER_MAX-HEATER_MIN)/2*Math.sin(2 * Math.PI * HEATER_FREQ * elapsedTime/1000);
-        let gridInRate = (GRID_IN_MAX+GRID_IN_MIN)/2 + (GRID_IN_MAX-GRID_IN_MIN)/2*Math.sin(2 * Math.PI * GRID_IN_FREQ * elapsedTime/1000);
-        let gridOutRate = (GRID_OUT_MAX+GRID_OUT_MIN)/2 + (GRID_OUT_MAX-GRID_OUT_MIN)/2*Math.sin(2 * Math.PI * GRID_OUT_FREQ * elapsedTime/1000);
-        let genRate = (GEN_MAX+GEN_MIN)/2 + (GEN_MAX-GEN_MIN)/2*Math.sin(2 * Math.PI * GEN_FREQ * elapsedTime/1000);
-        let battOutRate = (BATT_OUT_MAX+BATT_OUT_MIN)/2 + (BATT_OUT_MAX-BATT_OUT_MIN)/2*Math.sin(2 * Math.PI * BATT_OUT_FREQ * elapsedTime/1000);
-        let battInRate = (BATT_IN_MAX+BATT_IN_MIN)/2 + (BATT_IN_MAX-BATT_IN_MIN)/2*Math.sin(2 * Math.PI * BATT_IN_FREQ * elapsedTime/1000);
+        rates.heaterRate = (HEATER_MAX+HEATER_MIN)/2 + (HEATER_MAX-HEATER_MIN)/2*Math.sin(2 * Math.PI * HEATER_FREQ * elapsedTime/1000);
+        rates.gridInRate = (GRID_IN_MAX+GRID_IN_MIN)/2 + (GRID_IN_MAX-GRID_IN_MIN)/2*Math.sin(2 * Math.PI * GRID_IN_FREQ * elapsedTime/1000);
+        rates.gridOutRate = (GRID_OUT_MAX+GRID_OUT_MIN)/2 + (GRID_OUT_MAX-GRID_OUT_MIN)/2*Math.sin(2 * Math.PI * GRID_OUT_FREQ * elapsedTime/1000);
+        rates.genRate = (GEN_MAX+GEN_MIN)/2 + (GEN_MAX-GEN_MIN)/2*Math.sin(2 * Math.PI * GEN_FREQ * elapsedTime/1000);
+        rates.battOutRate = (BATT_OUT_MAX+BATT_OUT_MIN)/2 + (BATT_OUT_MAX-BATT_OUT_MIN)/2*Math.sin(2 * Math.PI * BATT_OUT_FREQ * elapsedTime/1000);
+        rates.battInRate = (BATT_IN_MAX+BATT_IN_MIN)/2 + (BATT_IN_MAX-BATT_IN_MIN)/2*Math.sin(2 * Math.PI * BATT_IN_FREQ * elapsedTime/1000);
 
-        if (gridOutRate < 0) {
-          gridOutRate = 0;
+        if (rates.gridOutRate < 0) {
+          rates.gridOutRate = 0;
         }
-        if (battOutRate < 0) {
-          battOutRate = 0;
+        if (rates.battOutRate < 0) {
+          rates.battOutRate = 0;
         }
-        if (battInRate < 0) {
-          battInRate = 0;
+        if (rates.battInRate < 0) {
+          rates.battInRate = 0;
         }
-        sankey.gridInRoute = {rate: gridInRate}
-        sankey.gridOutRoute = {rate: gridOutRate}
+        redrawSankey();
+      }, 50)
+
+      function redrawSankey() {
+        sankey = document.getElementById('example1')
+        sankey.gridInRoute = {rate: rates.gridInRate}
+        sankey.gridOutRoute = {rate: rates.gridOutRate}
         sankey.generationInRoutes = {
-          gen1: {text: "Solar", icon:mdiSolarPower, rate: genRate}
+          gen1: {text: "Solar", icon:mdiSolarPower, rate: rates.genRate}
         }
         sankey.consumerRoutes = {
-          consumer1: {text: "Heater", rate: heaterRate},
+          consumer1: {text: "Heater", rate: rates.heaterRate},
           consumer2: {text: 'Dishwasher', rate: 7},
           consumer3: {text: "Lamp", rate: 2},
         }
         if (document.querySelector('.batteryCheckbox').checked) {
           sankey.batteryRoutes = {
             batt1: {
-              in: { rate: battInRate, text: "BatteryA in" },
-              out: { rate: battOutRate, text: "BatteryA out" },
+              in: { rate: rates.battInRate, text: "BatteryA in" },
+              out: { rate: rates.battOutRate, text: "BatteryA out" },
             },
             batt2: {
               in: { rate: 10, text: "BatteryB in" },
@@ -70,7 +91,13 @@
         else {
           sankey.batteryRoutes = {}
         }
-      }, 50)
+      }
+
+      window.updateVar = function updateVariable(event, variableName) {
+        rates[variableName] = parseFloat(event.target.value);
+        console.log(`Updated ${variableName} to ${rates[variableName]}`); // Debugging line
+        redrawSankey();
+      }
     </script>
     <style type="text/css">
       * {
@@ -80,8 +107,30 @@
   </head>
   <body style="margin-left: 24px">
     <h2>Example</h2>
-    <p>Animate:<input class="animateCheckbox" type="checkbox" value="1" name="animate" checked></p>
-    <p>Batteries:<input class="batteryCheckbox" type="checkbox" value="1" name="batteries" checked></p>
+    <table>
+      <tr>
+        <td>
+        <p>Animate:<input class="animateCheckbox" type="checkbox" value="1" name="animate" checked/></p>
+        <p>Batteries:<input class="batteryCheckbox" type="checkbox" value="1" name="batteries" checked/></p>
+        </td>
+        <td>
+          <form>
+            <label for="heaterRate">Heater Rate:</label>
+            <input type="number" id="heaterRate" name="heaterRate" value="0" oninput="window.updateVar(event, 'heaterRate');"><br>
+            <label for="gridInRate">Grid In Rate:</label>
+            <input type="number" id="gridInRate" name="gridInRate" value="0" oninput="window.updateVar(event, 'gridInRate');"><br>
+            <label for="gridOutRate">Grid Out Rate:</label>
+            <input type="number" id="gridOutRate" name="gridOutRate" value="0" oninput="window.updateVar(event, 'gridOutRate');"><br>
+            <label for="genRate">Generation Rate:</label>
+            <input type="number" id="genRate" name="genRate" value="0" oninput="window.updateVar(event, 'genRate');"><br>
+            <label for="battOutRate">Battery Out Rate:</label>
+            <input type="number" id="battOutRate" name="battOutRate" value="0" oninput="window.updateVar(event, 'battOutRate');"><br>
+            <label for="battInRate">Battery In Rate:</label>
+            <input type="number" id="battInRate" name="battInRate" value="0" oninput="window.updateVar(event, 'battInRate');"><br>
+          </form>
+        </td>
+      </tr>
+    </table>
     <elec-sankey id="example1"
       unit="kWh"
     ></elec-sankey>

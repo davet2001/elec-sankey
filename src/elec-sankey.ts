@@ -12,6 +12,7 @@ import {
   mdiTransmissionTower,
   mdiHelpRhombus,
   mdiBatteryCharging,
+  mdiBattery,
 } from "@mdi/js";
 import { customElement, property } from "lit/decorators.js";
 
@@ -40,15 +41,15 @@ import { customElement, property } from "lit/decorators.js";
  */
 
 const TERMINATOR_BLOCK_LENGTH = 50;
-const GENERATION_FAN_OUT_HORIZONTAL_GAP = 80;
+const GENERATION_FAN_OUT_HORIZONTAL_GAP = 50;
 const CONSUMERS_FAN_OUT_VERTICAL_GAP = 90;
 const CONSUMER_LABEL_HEIGHT = 50;
 const TARGET_SCALED_TRUNK_WIDTH = 90;
-const PAD_MULTIPLIER = 1.0;
+const PAD_MULTIPLIER = 1.8;
 
 const GEN_COLOR = "#0d6a04";
 const GRID_IN_COLOR = "#920e83";
-const BATT_OUT_COLOR = "#01f4fc";
+const BATT_IN_COLOR = "#01f4fc";
 
 // The below two lengths must add up to 100.
 const CONSUMER_BLEND_LENGTH = 80;
@@ -495,20 +496,38 @@ export class ElecSankey extends LitElement {
   }
 
   private _batteryOutTotal(): number {
+    /**
+     * Battery rate out of the electrical system (i.e. charging).
+     */
     let total = 0;
     for (const id in this.batteryRoutes) {
       if (Object.prototype.hasOwnProperty.call(this.batteryRoutes, id)) {
-        total += this.batteryRoutes[id].out.rate;
+        const inRate = this.batteryRoutes[id].in.rate;
+        const outRate = this.batteryRoutes[id].out.rate;
+        if (outRate > 0) {
+          total += outRate;
+        } else if (outRate < 0) {
+          total -= inRate;
+        }
       }
     }
     return total;
   }
 
   private _batteryInTotal(): number {
+    /**
+     * Battery rate in to the electrical system (i.e. discharging)
+     */
     let total = 0;
     for (const id in this.batteryRoutes) {
       if (Object.prototype.hasOwnProperty.call(this.batteryRoutes, id)) {
-        total += this.batteryRoutes[id].in.rate;
+        const inRate = this.batteryRoutes[id].in.rate;
+        const outRate = this.batteryRoutes[id].out.rate;
+        if (inRate > 0) {
+          total += inRate;
+        } else if (outRate < 0) {
+          total -= outRate;
+        }
       }
     }
     return total;
@@ -569,10 +588,8 @@ export class ElecSankey extends LitElement {
       // could go the grid is going to the grid, the rest goes to consumers.
       if (this._gridExport > batteryInTotal) {
         batteriesToGridTemp = batteryInTotal;
-        generationToGridTemp = this._gridExport - batteryInTotal;
       } else {
         batteriesToGridTemp = this._gridExport;
-        generationToGridTemp = 0;
       }
     }
     // Whatever battery out is not going to the grid must be going to consumers.
@@ -601,6 +618,15 @@ export class ElecSankey extends LitElement {
     // All grid input that is not going to batteries must be going to
     // consumers, so we calculate that next.
     gridToConsumersTemp = gridImport - gridToBatteriesTemp;
+
+    // If we are exporting more than is coming from the batteries, we
+    // must be generating this amount. We don't know whether it is phantom
+    // or real yet.
+    if (this._gridExport > batteryInTotal) {
+      generationToGridTemp = this._gridExport - batteryInTotal;
+    } else {
+      generationToGridTemp = 0;
+    }
 
     // Now that we have generation to grid & generation to batteries, the
     // remaining generation must be going to consumers, so we calculate that.
@@ -658,6 +684,12 @@ export class ElecSankey extends LitElement {
       //   generationTrackedTotal +
       //   phantomGeneration -
       //   (generationToGridTemp + generationToBatteriesTemp);
+    }
+
+    if (this._gridExport > batteryInTotal) {
+      generationToGridTemp = this._gridExport - batteryInTotal;
+    } else {
+      generationToGridTemp = 0;
     }
 
     consumerTotalA =
@@ -766,10 +798,8 @@ export class ElecSankey extends LitElement {
   }
 
   private _gridOutFlowWidth(): number {
-    if (this.gridOutRoute === undefined || this.gridOutRoute.rate <= 0) {
-      return 0;
-    }
-    return this._rateToWidth(this.gridOutRoute.rate);
+    const rate = this._gridExport;
+    return rate ? this._rateToWidth(rate) : 0;
   }
 
   private _gridToConsumersFlowWidth(): number {
@@ -836,8 +866,8 @@ export class ElecSankey extends LitElement {
 
   private _battColor(): string {
     const computedStyles = getComputedStyle(this);
-    const ret = computedStyles.getPropertyValue("--batt-out-color").trim();
-    return ret || BATT_OUT_COLOR;
+    const ret = computedStyles.getPropertyValue("--batt-in-color").trim();
+    return ret || BATT_IN_COLOR;
   }
 
   protected _generateLabelDiv(
@@ -845,7 +875,10 @@ export class ElecSankey extends LitElement {
     icon: string | undefined,
     _name: string | undefined,
     valueA: number,
-    valueB: number | undefined = undefined
+    valueB: number | undefined = undefined,
+    _valueAColor: string | undefined = undefined,
+    _valueBColor: string | undefined = undefined,
+    _displayClass: string | undefined = undefined
   ): TemplateResult {
     const valueARounded = Math.round(valueA * 10) / 10;
     const valueBRounded = valueB ? Math.round(valueB * 10) / 10 : undefined;
@@ -882,15 +915,14 @@ export class ElecSankey extends LitElement {
   ): [TemplateResult[] | symbol[], TemplateResult | symbol] {
     const totalGenWidth = this._generationInFlowWidth();
     const genToConsWidth = this._generationToConsumersFlowWidth();
-
+    const genFanOutGap = GENERATION_FAN_OUT_HORIZONTAL_GAP / svgScaleX;
     if (genToConsWidth === 0 && !Object.keys(this.generationInRoutes)) {
       return [[nothing], nothing];
     }
     const count =
       Object.keys(this.generationInRoutes).length +
       (this._phantomGenerationInRoute !== undefined ? 1 : 0);
-    const fanOutWidth =
-      totalGenWidth + (count - 1) * GENERATION_FAN_OUT_HORIZONTAL_GAP;
+    const fanOutWidth = totalGenWidth + (count - 1) * genFanOutGap;
     let xA = x0 + totalGenWidth / 2 - fanOutWidth / 2;
     let xB = x0;
     const svgArray: TemplateResult[] = [];
@@ -954,7 +986,7 @@ export class ElecSankey extends LitElement {
             </div>`
           );
         }
-        xA += width + GENERATION_FAN_OUT_HORIZONTAL_GAP;
+        xA += width + genFanOutGap;
         xB += width;
       }
       i++;
@@ -1030,15 +1062,14 @@ export class ElecSankey extends LitElement {
     }
     return svg`
     <polygon
-      class="grid"
+      class="grid-out-arrow"
       points="${x10},${y10}
       ${x10},${y2}
       ${x10 - arrow_head_length},${(y10 + y2) / 2}"
-      {color ? style="fill:${color};fill-opacity:1" : ""}
+      style="${color ? `fill:${color};fill-opacity:1` : ``}"
     />
   `;
   }
-
   protected renderGenerationToBatteriesFlow(
     x14: number,
     x15: number,
@@ -1088,7 +1119,10 @@ export class ElecSankey extends LitElement {
         mdiTransmissionTower,
         undefined,
         rateA,
-        rateB
+        rateB,
+        undefined,
+        undefined,
+        "grid"
       )}
     </div>`;
 
@@ -1202,7 +1236,7 @@ export class ElecSankey extends LitElement {
       y10,
       this._genColor(),
       endColor,
-      "gen-grid-in-blend-rect"
+      "gen-grid-out-blend-rect"
     );
   }
 
@@ -1227,7 +1261,7 @@ export class ElecSankey extends LitElement {
       y11,
       this._battColor(),
       endColor,
-      "batt-grid-in-blend-rect"
+      "batt-grid-out-blend-rect"
     );
   }
   protected renderGenInBlendFlow(
@@ -1514,8 +1548,8 @@ export class ElecSankey extends LitElement {
     const gridColor = this._gridColor();
     const genColor = this._genColor();
 
-    const ratio = x14 - x17 < 1 ? 1 : (x14 - x17) / (x15 - x17);
-    const battInBlendColor = mixHexes(gridColor, genColor, ratio);
+    const ratio = x14 - x17 < 1 ? 0 : (x14 - x17) / (x15 - x17);
+    const battOutBlendColor = mixHexes(gridColor, genColor, ratio);
     if (this._gridToBatteriesFlowWidth() !== 0) {
       svgRetArray.push(
         renderBlendRect(
@@ -1528,7 +1562,7 @@ export class ElecSankey extends LitElement {
           x17,
           y18,
           gridColor,
-          battInBlendColor,
+          battOutBlendColor,
           "grid-to-batt-blend"
         )
       );
@@ -1545,7 +1579,7 @@ export class ElecSankey extends LitElement {
           x14,
           y18,
           genColor,
-          battInBlendColor,
+          battOutBlendColor,
           "gen-to-batt-blend"
         )
       );
@@ -1595,8 +1629,6 @@ export class ElecSankey extends LitElement {
           class="tint"/>`
         );
         xA -= widthIn;
-      } else {
-        console.log("Skipping battery in route: " + widthIn);
       }
       if (xA - x15 > 1) {
         svgRetArray.push(
@@ -1615,7 +1647,7 @@ export class ElecSankey extends LitElement {
             x1 - arrow_head_length,
             yA + curvePadTemp + widthIn + widthOut,
             "battery",
-            battInBlendColor
+            battOutBlendColor
           )
         );
         svgRetArray.push(
@@ -1625,7 +1657,7 @@ export class ElecSankey extends LitElement {
           }
           ${x1},${yA + curvePadTemp + widthIn + widthOut / 2},
           ${x1 - arrow_head_length},${yA + curvePadTemp + widthIn + widthOut}"
-          style="fill:${battInBlendColor}" />`
+          style="fill:${battOutBlendColor}" />`
         );
         xB -= widthOut;
       }
@@ -1637,7 +1669,7 @@ export class ElecSankey extends LitElement {
             xB - x17,
             gap + widthOut + widthIn,
             "battery-in",
-            battInBlendColor
+            battOutBlendColor
           )
         );
       }
@@ -1653,9 +1685,13 @@ export class ElecSankey extends LitElement {
         >
             ${this._generateLabelDiv(
               batt.in.id,
-              mdiBatteryCharging,
-              batt.in.text,
-              batt.in.rate
+              batt.out.rate > 0 ? mdiBatteryCharging : mdiBattery,
+              "",
+              batt.out.rate,
+              batt.in.rate,
+              batt.out.rate > 0 ? battOutBlendColor : undefined,
+              undefined,
+              "battery"
             )}
           </div>
         </div>`
@@ -2113,6 +2149,7 @@ export class ElecSankey extends LitElement {
     }
     .elecroute-label-battery {
       display: flex;
+      min-width: 60px;
       padding-left: 6px;
     }
     .elecroute-label-horiz {
@@ -2146,7 +2183,7 @@ export class ElecSankey extends LitElement {
         fill: var(--grid-in-color, #920e83);
       }
       path.battery {
-        fill: var(--batt-out-color, #01f4fc);
+        fill: var(--batt-in-color, #01f4fc);
       }
       polygon {
         stroke: none;
@@ -2174,7 +2211,7 @@ export class ElecSankey extends LitElement {
         fill: var(--grid-in-color, #920e83);
       }
       rect.battery {
-        fill: var(--batt-out-color, #01f4fc);
+        fill: var(--batt-in-color, #01f4fc);
       }
     }
   `;
