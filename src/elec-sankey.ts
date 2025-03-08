@@ -447,15 +447,15 @@ export class ElecSankey extends LitElement {
 
   private _batteriesToConsumersRate: number = 0;
 
-  private _gridToBatteriesRate = 0;
+  private _gridToBatteriesRate: number = 0;
 
-  private _gridToConsumersRate = 0;
+  private _gridToConsumersRate: number = 0;
 
-  private _generationToBatteriesRate = 0;
+  private _generationToBatteriesRate: number = 0;
 
-  private _generationToGridRate = 0;
+  private _generationToGridRate: number = 0;
 
-  private _generationToConsumersRate = 0;
+  private _generationToConsumersRate: number = 0;
 
   private _generationTrackedTotal(): number {
     let totalGen = 0;
@@ -1508,9 +1508,6 @@ export class ElecSankey extends LitElement {
     // @todo if batteries aren't present, skip.
     const gap = CONSUMERS_FAN_OUT_VERTICAL_GAP / svgScaleX;
     const arrow_head_length = ARROW_HEAD_LENGTH / svgScaleX;
-    // if (false * 1) {
-    //   return nothing;
-    // }
     const gridColor = this._gridColor();
     const genColor = this._genColor();
 
