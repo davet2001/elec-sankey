@@ -36,6 +36,7 @@ While written for home assistant, this class deliberately makes no reference to 
 ## Development:
 
 Developed in a vscode devcontainer.
-Rebuild, open a terminal and run
+Rebuild dev container, open a terminal and run
 
+`npm install`
 `npm run develop`
