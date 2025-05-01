@@ -611,7 +611,7 @@ export class ElecSankey extends LitElement {
     x =
       this._gridExport +
       generationToBatteriesTemp -
-      (generationTrackedTotal + gridToBatteriesTemp);
+      (generationTrackedTotal + gridToBatteriesTemp + batteryInTotal);
     if (x > 0) {
       phantomGeneration = x;
     }
@@ -726,20 +726,18 @@ export class ElecSankey extends LitElement {
           }
         : undefined;
     this._phantomGenerationInRoute =
-      phantomGeneration > 0
+      phantomGeneration > 0.01
         ? {
             text: "Unknown source",
             icon: mdiHelpRhombus,
             rate: phantomGeneration,
           }
         : undefined;
-    if (untrackedConsumer > 0) {
-      this._untrackedConsumerRoute = {
-        id: "untracked",
-        text: "Untracked",
-        rate: untrackedConsumer,
-      };
-    }
+    this._untrackedConsumerRoute = {
+      id: "untracked",
+      text: "Untracked",
+      rate: untrackedConsumer > 0 ? untrackedConsumer : 0,
+    };
 
     /**
      * Calculate and update a scaling factor to make the UI look sensible.
@@ -1409,8 +1407,9 @@ export class ElecSankey extends LitElement {
 
     if (this.hideConsumersBelow > 0) {
       for (const key in consumerRoutes) {
-        if (consumerRoutes[key].rate < this.hideConsumersBelow) {
-          groupedConsumer.rate += consumerRoutes[key].rate;
+        let rate = consumerRoutes[key].rate || 0; // Treat undef/NaN as 0
+        if (rate < this.hideConsumersBelow) {
+          groupedConsumer.rate += rate;
           groupedConsumerExists = true;
           delete consumerRoutes[key];
         }
@@ -1424,10 +1423,10 @@ export class ElecSankey extends LitElement {
         consumerRoutes = this.consumerRoutes;
         const sortedConsumerRoutes: ElecRoute[] = Object.values(
           this.consumerRoutes
-        ).sort((a, b) => a.rate - b.rate);
+        ).sort((a, b) => (a.rate || 0) - (b.rate || 0));
         sortedConsumerRoutes.forEach((route) => {
           if (otherCount > 0) {
-            groupedConsumer.rate += route.rate;
+            groupedConsumer.rate += route.rate || 0;
             groupedConsumerExists = true;
             if (route.id) {
               delete consumerRoutes[route.id];
@@ -2106,6 +2105,7 @@ export class ElecSankey extends LitElement {
       flex: 1;
       min-width: 80px;
       max-width: 120px;
+      padding: 0px 16px 0px 0px;
     }
     .col3top {
       height: 60px;
