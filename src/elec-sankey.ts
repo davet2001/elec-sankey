@@ -70,6 +70,9 @@ const SVG_LHS_VISIBLE_WIDTH = 110;
 
 export const PAD_ANTIALIAS = 0.5;
 
+const UNTRACKED_ID = "untracked";
+const OTHER_ID = "other";
+
 export interface ElecRoute {
   id?: string;
   text?: string;
@@ -431,6 +434,9 @@ export class ElecSankey extends LitElement {
   @property({ attribute: false })
   public hideConsumersBelow: number = 0;
 
+  @property({ attribute: false })
+  public batteryChargeOnlyFromGeneration: boolean = false;
+
   private _rateToWidthMultplier: number = 0.2;
 
   private _phantomGridInRoute?: ElecRoute;
@@ -482,6 +488,8 @@ export class ElecSankey extends LitElement {
   private _gridImport(): number {
     if (this.gridInRoute) {
       return this.gridInRoute.rate > 0 ? this.gridInRoute.rate : 0;
+    } else if (this.gridOutRoute) {
+      return this.gridOutRoute.rate < 0 ? -this.gridOutRoute.rate : 0;
     }
     return 0;
   }
@@ -596,15 +604,25 @@ export class ElecSankey extends LitElement {
     // Whatever battery out is not going to the grid must be going to consumers.
     let batteriesToConsumersTemp = batteryInTotal - batteriesToGridTemp;
 
-    // We then proceed on the basis that the full flow into the battery is
-    // coming from the grid (as far as the grid input allows). If there is
-    // more flow coming into the batteries than the grid would allow, we
-    // assume that the additional flow is coming from generation.
-    if (gridImport > batteriesOutTotal) {
-      gridToBatteriesTemp = batteriesOutTotal;
+    // The user can specify that their batteries are only charged from
+    // generation.
+    if (this.batteryChargeOnlyFromGeneration) {
+      // In this case, we assume that all the flow into the
+      // batteries is coming from generation, and the grid is not contributing
+      // at all.
+      gridToBatteriesTemp = 0;
+      generationToBatteriesTemp = batteriesOutTotal;
     } else {
-      gridToBatteriesTemp = gridImport;
-      generationToBatteriesTemp = batteriesOutTotal - gridToBatteriesTemp;
+      // Otherwise, we proceed on the basis that the full flow into the battery
+      // is coming from the grid (as far as the grid input allows). If there is
+      // more flow coming into the batteries than the grid would allow, we
+      // assume that the additional flow is coming from generation.
+      if (gridImport > batteriesOutTotal) {
+        gridToBatteriesTemp = batteriesOutTotal;
+      } else {
+        gridToBatteriesTemp = gridImport;
+        generationToBatteriesTemp = batteriesOutTotal - gridToBatteriesTemp;
+      }
     }
     // If we have exceeded the total generation by doing this, we must
     // recalculate the phantom generation source.
@@ -734,7 +752,7 @@ export class ElecSankey extends LitElement {
           }
         : undefined;
     this._untrackedConsumerRoute = {
-      id: "untracked",
+      id: UNTRACKED_ID,
       text: "Untracked",
       rate: untrackedConsumer > 0 ? untrackedConsumer : 0,
     };
@@ -755,6 +773,7 @@ export class ElecSankey extends LitElement {
 
     this._batteriesToGridRate = batteriesToGridTemp;
     this._batteriesToConsumersRate = batteriesToConsumersTemp;
+    const batteriesTotal = batteriesToGridTemp + batteriesToConsumersTemp;
 
     this._generationToConsumersRate = generationToConsumersTemp;
     this._generationToBatteriesRate = generationToBatteriesTemp;
@@ -763,7 +782,13 @@ export class ElecSankey extends LitElement {
     this._gridToBatteriesRate = gridToBatteriesTemp;
     this._gridToConsumersRate = gridToConsumersTemp;
 
-    const widest_trunk = Math.max(genTotal, gridInTotal, consumerTotal, 1.0);
+    const widest_trunk = Math.max(
+      genTotal,
+      gridInTotal,
+      consumerTotal,
+      batteriesTotal,
+      1.0
+    );
     this._rateToWidthMultplier = TARGET_SCALED_TRUNK_WIDTH / widest_trunk;
   }
 
@@ -1070,7 +1095,8 @@ export class ElecSankey extends LitElement {
     y10: number,
     svgScaleX: number = 1
   ): [TemplateResult | symbol, TemplateResult | symbol] {
-    if (!this.gridInRoute) {
+    const gridRoute = this.gridInRoute ? this.gridInRoute : this.gridOutRoute;
+    if (!gridRoute) {
       return [nothing, nothing];
     }
     const arrow_head_length = ARROW_HEAD_LENGTH / svgScaleX;
@@ -1088,7 +1114,7 @@ export class ElecSankey extends LitElement {
       top: ${midY * svgScaleX}px; margin: ${-divHeight / 2}px 0 0 0px;"
     >
       ${this._generateLabelDiv(
-        this.gridInRoute.id,
+        gridRoute.id,
         mdiTransmissionTower,
         undefined,
         rateA,
@@ -1365,6 +1391,9 @@ export class ElecSankey extends LitElement {
       consumer
     );
 
+    const id = [UNTRACKED_ID, OTHER_ID].includes(consumer.id ?? "")
+      ? undefined
+      : consumer.id;
     const divHeight = CONSUMER_LABEL_HEIGHT;
     const divRet = html`<div
       class="label elecroute-label-consumer"
@@ -1372,12 +1401,7 @@ export class ElecSankey extends LitElement {
       top: ${yEnd * svgScaleX -
       (count * divHeight) / 2}px; margin: ${-divHeight / 2}px 0 0 0;"
     >
-      ${this._generateLabelDiv(
-        consumer.id,
-        undefined,
-        consumer.text,
-        consumer.rate
-      )}
+      ${this._generateLabelDiv(id, undefined, consumer.text, consumer.rate)}
     </div>`;
 
     const svgRet = svg`
@@ -1396,10 +1420,16 @@ export class ElecSankey extends LitElement {
 
   private _getGroupedConsumerRoutes(): { [id: string]: ElecRoute } {
     let consumerRoutes: { [id: string]: ElecRoute } = {};
-    consumerRoutes = structuredClone(this.consumerRoutes);
+    const entries: Array<[string, ElecRoute]> = Object.entries(
+      this.consumerRoutes
+    );
+    entries.sort(([, routeA], [, routeB]) => routeB.rate - routeA.rate);
+    for (const [key, val] of Object.entries(entries)) {
+      consumerRoutes[key] = val[1];
+    }
 
     let groupedConsumer: ElecRoute = {
-      id: "other",
+      id: OTHER_ID,
       text: "Other",
       rate: 0,
     };
